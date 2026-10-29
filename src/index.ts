@@ -75,7 +75,10 @@ app.get("/ring/config", (_req, res) => {
 app.get("/ring/link", (req, res) => {
   const state = typeof req.query.state === "string" ? req.query.state : randomUUID();
   if (!CONFIG.RING_OAUTH_AUTHORIZE_URL) {
-    return res.status(503).send(`<!doctype html><html><body style="font-family:sans-serif;padding:2rem"><h1>Ring account linking is preparing</h1><p>The Ring OAuth authorization URL is not configured yet. This endpoint is ready for the console configuration.</p><p>State: ${state.replace(/[<>]/g, "")}</p></body></html>`);
+    void fs.mkdir("data", { recursive: true }).then(() =>
+      fs.writeFile("data/account-link.json", JSON.stringify({ initiatedAt: new Date().toISOString(), status: "ring_link_requested", state }, null, 2))
+    );
+    return res.redirect("/ring/config?account_link=requested");
   }
   const redirectUri = `${CONFIG.PUBLIC_APP_URL}/oauth/callback`;
   const authorizeUrl = new URL(CONFIG.RING_OAUTH_AUTHORIZE_URL);
