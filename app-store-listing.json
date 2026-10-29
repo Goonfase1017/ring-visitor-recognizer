@@ -1,0 +1,24 @@
+{
+  "name": "Ring Visitor Recognizer",
+  "tagline": "Know familiar faces at your door",
+  "category": "Home & Security",
+  "shortDescription": "Identify known visitors from Ring camera snapshots and keep a private, searchable arrival log.",
+  "description": "Ring Visitor Recognizer turns your Ring camera snapshots into useful, familiar context. Register trusted visitors with a clear photo, then see whether an arriving person matches someone you know. Recognition is performed locally with on-device embeddings, while the dashboard keeps recent arrival events, snapshot photos, and visitor records together in one place. Capture snapshots manually, monitor connected Ring cameras automatically, and receive optional AWS SNS or SMS alerts. Visitor photos and recognition data are stored locally by default, with controls to delete individual visitor records at any time. Designed for home privacy and convenience: you decide who is registered, what names are used, and which recognition events are kept.",
+  "privacy": "Visitor names, photos, face embeddings, and event snapshots are stored locally in the app data directory. Ring account access is used only for connected cameras and snapshots. Optional AWS notifications require credentials configured by the owner.",
+  "features": [
+    "Automatic Ring camera monitoring",
+    "Private on-device face embedding and matching",
+    "Visitor registration by local photo or image URL",
+    "Recent events with arrival and registered photos",
+    "Manual snapshot capture",
+    "Optional AWS SNS and SMS visitor alerts",
+    "Individual visitor deletion controls"
+  ],
+  "requirements": [
+    "Ring account with refresh-token access",
+    "At least one connected Ring camera",
+    "A Docker host or Node.js environment",
+    "Python 3 for local face recognition"
+  ],
+  "logo": "public/logo.svg"
+}

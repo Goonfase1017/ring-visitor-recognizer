@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: ring-visitor-recognizer
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: RING_REFRESH_TOKEN
+        sync: false
+      - key: RING_CLIENT_ID
+        sync: false
+      - key: RING_CLIENT_SECRET
+        sync: false
+      - key: RING_HMAC_SIGNATURE_KEY
+        sync: false
+      - key: RING_OAUTH_AUTHORIZE_URL
+        sync: false
+      - key: RING_OAUTH_TOKEN_URL
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_DEFAULT_REGION
+        value: us-east-2
+      - key: AWS_SNS_TOPIC_ARN
+        sync: false
+      - key: VISITOR_SMS_PHONE
+        sync: false

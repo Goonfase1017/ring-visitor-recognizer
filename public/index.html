@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#08111f" />
+  <title>Ring Visitor Recognizer</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+  <style>
+    :root {--ink:#eef6ff;--muted:#91a4bb;--panel:rgba(14,28,46,.86);--line:rgba(144,180,218,.16);--cyan:#53d6d0;--blue:#6da8ff;--danger:#ff7a8b;--navy:#08111f;}
+    * {box-sizing:border-box;}
+    body {margin:0;min-height:100vh;font-family:Inter,Segoe UI,system-ui,-apple-system,sans-serif;color:var(--ink);background:radial-gradient(circle at 12% 0%,rgba(83,214,208,.13),transparent 28rem),radial-gradient(circle at 92% 10%,rgba(109,168,255,.12),transparent 26rem),linear-gradient(145deg,#07101d 0%,#0a1829 58%,#07111e 100%);}
+    .shell {width:min(1180px,calc(100% - 32px));margin:0 auto;padding:28px 0 56px;}
+    .brand {display:flex;align-items:center;gap:14px;margin-bottom:24px;}
+    .brand img {width:58px;height:58px;filter:drop-shadow(0 10px 24px rgba(83,214,208,.18));}
+    .brand h1 {margin:0;font-size:clamp(24px,3vw,38px);letter-spacing:-.035em;}
+    .brand p {margin:4px 0 0;color:var(--muted);font-size:14px;}
+    section {margin-top:16px;padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 18px 50px rgba(0,0,0,.18);backdrop-filter:blur(16px);}
+    h2 {margin:0 0 16px;font-size:17px;letter-spacing:.01em;}
+    table {border-collapse:separate;border-spacing:0;width:100%;margin-top:12px;overflow:hidden;border-radius:12px;border:1px solid var(--line);}
+    th,td {padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);} th {color:#b9c9da;background:rgba(109,168,255,.07);font-size:12px;text-transform:uppercase;letter-spacing:.08em;} tbody tr:last-child td {border-bottom:0;} tbody tr {transition:.15s background;} tbody tr:hover {background:rgba(83,214,208,.035);} 
+    .unknown {color:var(--danger);} .visitor-photo {width:76px;height:76px;object-fit:cover;border-radius:12px;border:1px solid var(--line);} .danger {color:var(--danger)!important;}
+    .registration-row {display:flex;align-items:center;gap:10px;flex-wrap:wrap;} .field-group {display:inline-flex;align-items:center;gap:7px;}
+    input {height:42px;border:1px solid var(--line);border-radius:10px;padding:0 12px;color:var(--ink);background:rgba(4,12,23,.72);outline:none;} input:focus {border-color:rgba(83,214,208,.65);box-shadow:0 0 0 3px rgba(83,214,208,.08);} input::file-selector-button {height:32px;margin-right:8px;border:0;border-radius:7px;color:#07111f;background:var(--cyan);font-weight:700;cursor:pointer;}
+    button {height:42px;border:1px solid rgba(83,214,208,.35);border-radius:10px;padding:0 14px;color:#07111f;background:linear-gradient(135deg,var(--cyan),#9ce8d3);font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(83,214,208,.09);} button:hover {filter:brightness(1.06);transform:translateY(-1px);} button:active {transform:none;}
+    .help {position:relative;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#506783;color:white;font-size:12px;font-weight:bold;cursor:help;flex:0 0 auto;}
+    .help-tooltip {position:absolute;z-index:20;bottom:calc(100% + 8px);left:50%;width:220px;transform:translateX(-50%);padding:8px 10px;border-radius:9px;background:#dcecff;color:#102238;font-size:12px;font-weight:600;line-height:1.35;opacity:0;visibility:hidden;pointer-events:none;box-shadow:0 12px 30px rgba(0,0,0,.28);} .help:hover .help-tooltip,.help:focus-within .help-tooltip {opacity:1;visibility:visible;}
+    #ring-status {color:var(--muted);} @media (max-width:760px){.shell{width:min(100% - 20px,1180px);padding-top:18px;} section{padding:16px;} table{display:block;overflow-x:auto;} .brand img{width:48px;height:48px;}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+  <header class="brand"><img src="/logo.svg" alt="Ring Visitor Recognizer logo" /><div><h1>Ring Visitor Recognizer</h1><p>Know who arrived. Stay in control.</p></div></header>
+  <section id="ring-section">
+    <h2>Ring Camera</h2>
+    <div class="registration-row">
+      <button type="button" onclick="captureSnapshot()">Capture snapshot now</button>
+      <span id="ring-status">Checking camera status...</span>
+    </div>
+  </section>
+  <section id="visitors-section">
+    <h2>Register a Visitor</h2>
+    <form id="visitor-form">
+      <div class="registration-row">
+        <div class="field-group">
+          <input id="visitor-name" type="text" placeholder="Visitor name" required />
+          <span class="help" tabindex="0" aria-label="Visitor name help">?<span class="help-tooltip">Enter the name that should be shown in notifications when this visitor arrives.</span></span>
+        </div>
+        <div class="field-group">
+          <input id="visitor-photo" type="file" accept="image/jpeg,image/png,image/webp" />
+          <span class="help" tabindex="0" aria-label="Local photo help">?<span class="help-tooltip">Choose a clear, front-facing JPG, PNG, or WebP photo from this device to create the reference face.</span></span>
+        </div>
+        <div class="field-group">
+          <input id="visitor-image" type="url" placeholder="Or public image URL" />
+          <span class="help" tabindex="0" aria-label="Image URL help">?<span class="help-tooltip">Alternatively, enter a direct public link to a clear face photo. You may use a local photo or this URL, not both.</span></span>
+        </div>
+        <div class="field-group">
+          <button type="submit">Register</button>
+          <span class="help" tabindex="0" aria-label="Register button help">?<span class="help-tooltip">Save the visitor name and reference photo so future Ring arrivals can be matched and named.</span></span>
+        </div>
+      </div>
+    </form>
+    <h2>Known Visitors</h2>
+    <table id="visitors-table">
+      <thead><tr><th>Name</th><th>Photo</th><th>Opt‑Out</th><th>Actions</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+  <section id="events-section">
+    <h2>Recent Events</h2>
+    <table id="events-table">
+      <thead><tr><th>Time</th><th>Type</th><th>Visitor</th><th>Photo</th><th>Score</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+  </main>
+
+  <script>
+    function escapeHtml(value) {
+      const element = document.createElement('span');
+      element.textContent = value ?? '';
+      return element.innerHTML;
+    }
+
+    async function loadVisitors() {
+      const resp = await fetch('/visitors');
+      const visitors = await resp.json();
+      const tbody = document.querySelector('#visitors-table tbody');
+      tbody.innerHTML = '';
+      visitors.forEach(v => {
+        const tr = document.createElement('tr');
+        const photo = v.photoPath
+          ? `<img class="visitor-photo" src="${escapeHtml(v.photoPath)}" alt="${escapeHtml(v.name)} photo" />`
+          : '';
+        tr.innerHTML = `<td>${escapeHtml(v.name)}</td><td>${photo}</td><td>${v.optOut ? '✅' : ''}</td><td><button type="button" class="danger" onclick="deleteVisitor('${v.id}')">Delete name and photo</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function deleteVisitor(id) {
+      if (!confirm('Delete this visitor name and stored photo?')) return;
+      const resp = await fetch(`/visitors/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!resp.ok) return alert('Failed to delete visitor');
+      await refresh();
+    }
+
+    async function deleteEvent(eventId) {
+      if (!confirm('Delete this unrecognized visitor event and its snapshot?')) return;
+      const resp = await fetch(`/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
+      if (!resp.ok) return alert('Failed to delete visitor event');
+      await refresh();
+    }
+
+    async function loadEvents() {
+      const resp = await fetch('/events');
+      const events = await resp.json();
+      const tbody = document.querySelector('#events-table tbody');
+      tbody.innerHTML = '';
+      events.forEach(e => {
+        const tr = document.createElement('tr');
+        const name = e.unknown
+          ? 'New unregistered visitor'
+          : e.name;
+        const registerAction = e.unknown && e.snapshotUrl
+          ? `<div><button type="button" onclick="showRegistration(this, '${escapeHtml(e.snapshotUrl)}')">Register visitor</button></div>`
+          : '';
+        const deleteAction = e.unknown && e.eventId
+          ? `<div><button type="button" class="danger" onclick="deleteEvent('${escapeHtml(e.eventId)}')">Delete event</button></div>`
+          : '';
+        const action = registerAction + deleteAction;
+        const registeredPhoto = !e.unknown && e.registeredPhotoUrl
+          ? `<img class="visitor-photo" src="${escapeHtml(e.registeredPhotoUrl)}" alt="Registered photo of ${escapeHtml(name)}" title="Registered visitor photo" />`
+          : '';
+        const arrivalPhoto = e.snapshotUrl
+          ? `<img class="visitor-photo" src="${escapeHtml(e.snapshotUrl)}" alt="Visitor arrival photo" title="Arrival snapshot" />`
+          : '';
+        const photo = registeredPhoto || arrivalPhoto ? `<div>${registeredPhoto}${arrivalPhoto}</div>` : '';
+        tr.innerHTML = `<td>${new Date(e.timestamp).toLocaleTimeString()}</td><td>${e.type}</td><td class="${e.unknown ? 'unknown' : ''}">${escapeHtml(name)}${action}</td><td>${photo}</td><td>${e.score ? e.score.toFixed(2) : ''}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function showRegistration(button, snapshotUrl) {
+      const container = button.parentElement;
+      container.innerHTML = `<span class="field-group"><input type="text" placeholder="Assign visitor name" required /><span class="help" tabindex="0" aria-label="Assigned name help">?<span class="help-tooltip">Enter the name this person should be identified as in future Ring notifications.</span></span></span> <button type="button">Save</button>`;
+      const input = container.querySelector('input');
+      const save = container.querySelector('button');
+      save.onclick = () => registerVisitor(input.value.trim(), snapshotUrl);
+    }
+
+    async function registerVisitor(name, imageUrl, imageData) {
+      if (!name) return alert('Please enter a visitor name.');
+      if (!imageUrl && !imageData) return alert('Choose a local photo or provide a public image URL.');
+      const resp = await fetch('/visitors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, imageUrl: imageUrl || undefined, imageData: imageData || undefined })
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        return alert(body.error || 'Failed to register visitor');
+      }
+      await refresh();
+    }
+    async function loadRingStatus() {
+      try {
+        const resp = await fetch('/ring/status');
+        const status = await resp.json();
+        document.querySelector('#ring-status').textContent = status.connected
+          ? `Connected: ${status.cameraNames.join(', ')} · Automatic face monitoring every ${status.pollIntervalSeconds} seconds`
+          : 'Camera not connected';
+      } catch {
+        document.querySelector('#ring-status').textContent = 'Camera status unavailable';
+      }
+    }
+
+    async function captureSnapshot() {
+      const status = document.querySelector('#ring-status');
+      status.textContent = 'Capturing snapshot...';
+      try {
+        const resp = await fetch('/ring/capture', { method: 'POST' });
+        const result = await resp.json();
+        status.textContent = result.success ? 'Snapshot captured' : (result.error || 'Capture failed');
+        await refresh();
+      } catch (err) {
+        status.textContent = 'Snapshot capture failed';
+      }
+    }
+
+    async function refresh() {
+      await loadVisitors();
+      await loadEvents();
+      await loadRingStatus();
+    }
+
+    document.querySelector('#visitor-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const file = document.querySelector('#visitor-photo').files[0];
+      const imageData = file ? await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      }) : undefined;
+      await registerVisitor(
+        document.querySelector('#visitor-name').value.trim(),
+        document.querySelector('#visitor-image').value.trim(),
+        imageData
+      );
+      event.target.reset();
+    });
+    setInterval(refresh, 5000);
+    refresh();
+  </script>
+</body>
+</html>

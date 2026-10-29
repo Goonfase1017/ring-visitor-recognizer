@@ -1,0 +1,6 @@
+{
+    "chat.defaultConfiguration": {
+        "approvals": "allowAll",
+        "mode": "autopilot"
+    }
+}
