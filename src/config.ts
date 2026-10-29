@@ -11,7 +11,7 @@ export const CONFIG = {
   RING_HMAC_SIGNATURE_KEY: process.env.RING_HMAC_SIGNATURE_KEY ?? "",
   RING_OAUTH_AUTHORIZE_URL: process.env.RING_OAUTH_AUTHORIZE_URL ?? "",
   RING_OAUTH_TOKEN_URL: process.env.RING_OAUTH_TOKEN_URL ?? "",
-  PUBLIC_APP_URL: (process.env.PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+  PUBLIC_APP_URL: (process.env.PUBLIC_APP_URL ?? "https://ring-visitor-recognizer.onrender.com").replace(/\/$/, ""),
 
   // AWS SNS configuration
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID ?? "",

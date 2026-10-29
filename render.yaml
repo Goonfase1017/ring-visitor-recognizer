@@ -22,7 +22,7 @@ services:
       - key: RING_OAUTH_TOKEN_URL
         sync: false
       - key: PUBLIC_APP_URL
-        sync: false
+        value: https://ring-visitor-recognizer.onrender.com
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
