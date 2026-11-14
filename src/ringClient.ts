@@ -3,6 +3,8 @@ import { CONFIG } from "./config";
 import { EventEmitter } from "events";
 import { promises as fs } from "fs";
 import { randomUUID } from "crypto";
+import os from "os";
+import path from "path";
 
 /**
  * Wrapper around Ring client‑api (uses refresh token).
@@ -63,10 +65,10 @@ export class RingClient extends EventEmitter {
     if (typeof (this.doorbell as any).getSnapshot === "function") {
       const snapshot: Buffer = await (this.doorbell as any).getSnapshot();
       if (!snapshot?.length) throw new Error("Ring returned an empty snapshot.");
-      const snapshotId = randomUUID();
-      await fs.mkdir("public/snapshots", { recursive: true });
-      await fs.writeFile(`public/snapshots/${snapshotId}.jpg`, snapshot);
-      return `http://localhost:3000/snapshots/${snapshotId}.jpg`;
+      // Short-lived temporary file for processing only; the caller encrypts it and deletes the temp copy.
+      const file = path.join(os.tmpdir(), `vr-${randomUUID()}.jpg`);
+      await fs.writeFile(file, snapshot, { mode: 0o600 });
+      return file;
     }
     throw new Error("This Ring camera does not expose a supported snapshot method.");
   }

@@ -1,14 +1,14 @@
 {
   "name": "ring-visitor-recognizer",
   "version": "0.1.0",
-  "description": "Identify familiar visitors from Ring camera snapshots with private, on-device face recognition.",
+  "description": "Recognize registered, consenting visitors from doorbell camera snapshots with server-side face matching and encrypted storage.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "npm run build && node dist/index.js",
     "dev": "ts-node-dev src/index.ts"
   },
-  "author": "Your Name",
+  "author": "Aoi Corp <mussadrammeh@protonmail.com>",
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-sns": "^3.600.0",

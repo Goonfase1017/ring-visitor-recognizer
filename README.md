@@ -1,4 +1,4 @@
-# Ring Visitor Recognizer
+# Visitor Recognizer
 
 ## Run
 
@@ -11,7 +11,7 @@ The dashboard is available at `http://localhost:3000/`.
 
 ## Face runtime
 
-Face embeddings run locally with Python 3.13 and LiteRT AI Edge:
+Face embeddings are generated server-side (on the app's Render service) with Python and LiteRT AI Edge:
 
 ```powershell
 py -3.13 -m pip install ai-edge-litert pillow numpy
@@ -47,4 +47,18 @@ VISITOR_SMS_PHONE=+14245566170
 
 The phone number must use E.164 format, including the leading `+` and country code. Ring motion notifications and app visitor notifications are separate; disabling or configuring Ring notifications does not disable Ring visitor-recognition alerts.
 
-Recognition events and their local snapshot paths are persisted in `data/events.json` and remain available in the dashboard event log after the app restarts.
+Recognition events are persisted encrypted in `data/events.json.enc`; snapshots are encrypted in `data/media/`. Events older than `RETENTION_DAYS` (default 30) are deleted by an hourly job.
+
+
+## Security and privacy configuration
+
+Required environment variables in production:
+
+- `ADMIN_TOKEN`: owner bearer token for every data API (dashboard prompts for it).
+- `DATA_ENCRYPTION_KEY`: 32-byte key (base64 or hex) for AES-256-GCM encryption at rest. Generate with `openssl rand -base64 32`. Without it the app refuses to store personal data.
+- `RETENTION_DAYS` (default 30), `AUDIT_RETENTION_DAYS` (default 365).
+
+Owner endpoints: `GET /privacy/export`, `DELETE /privacy/all`, `GET /audit`, `PATCH /visitors/:id/optout` (deletes the face template), `DELETE /visitors/:id`, `DELETE /events/:id`.
+Registration requires `consent: { confirmed: true, method }`; the consent time, method and statement are stored with the visitor.
+
+See `public/security.html` for vulnerability management and incident response.

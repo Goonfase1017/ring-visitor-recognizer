@@ -1,0 +1,12 @@
+name: Keep service warm
+# Render free instances sleep after 15 idle minutes, and waking takes ~30-50 s,
+# which made Ring's account-linking request time out (HTTP 504). Ping every 10 minutes.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --retry 3 --max-time 90 https://ring-visitor-recognizer.onrender.com/health

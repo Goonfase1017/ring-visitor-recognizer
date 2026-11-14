@@ -11,8 +11,12 @@ from ai_edge_litert.interpreter import Interpreter
 image_url = sys.argv[1]
 model_path = sys.argv[2]
 
-with urllib.request.urlopen(image_url, timeout=30) as response:
-    image = Image.open(io.BytesIO(response.read())).convert("RGB")
+if image_url.startswith(("http://", "https://")):
+    with urllib.request.urlopen(image_url, timeout=30) as response:
+        image = Image.open(io.BytesIO(response.read())).convert("RGB")
+else:
+    # Local temporary file written by the server (deleted right after embedding).
+    image = Image.open(image_url).convert("RGB")
 gray = cv2.cvtColor(np.asarray(image.convert("RGB")), cv2.COLOR_RGB2GRAY)
 cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 face_cascade = cv2.CascadeClassifier(cascade_path)

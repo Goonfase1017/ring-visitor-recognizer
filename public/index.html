@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#08111f" />
-  <title>Ring Visitor Recognizer</title>
+  <title>Visitor Recognizer</title>
   <link rel="icon" href="/logo.svg" type="image/svg+xml" />
   <style>
     :root {--ink:#eef6ff;--muted:#91a4bb;--panel:rgba(14,28,46,.86);--line:rgba(144,180,218,.16);--cyan:#53d6d0;--blue:#6da8ff;--danger:#ff7a8b;--navy:#08111f;}
@@ -30,7 +30,7 @@
 </head>
 <body>
   <main class="shell">
-  <header class="brand"><img src="/logo.svg" alt="Ring Visitor Recognizer logo" /><div><h1>Ring Visitor Recognizer</h1><p>Know who arrived. Stay in control.</p></div></header>
+  <header class="brand"><img src="/logo.svg" alt="Visitor Recognizer logo" /><div><h1>Visitor Recognizer</h1><p>Know who arrived. Stay in control.</p></div></header>
   <section id="ring-section">
     <h2>Ring Camera</h2>
     <div class="registration-row">
@@ -54,6 +54,10 @@
           <input id="visitor-image" type="url" placeholder="Or public image URL" />
           <span class="help" tabindex="0" aria-label="Image URL help">?<span class="help-tooltip">Alternatively, enter a direct public link to a clear face photo. You may use a local photo or this URL, not both.</span></span>
         </div>
+        <div class="field-group" style="flex-basis:100%">
+          <label style="color:var(--muted);font-size:14px;line-height:1.4"><input id="visitor-consent" type="checkbox" style="height:auto" required /> <span id="consent-text">I confirm this person has given me permission to store their name, photo, and face template so this app can recognise them at my door, and that I will delete their data if they ask.</span></label>
+          <select id="consent-method" style="height:42px;border-radius:10px;background:#040c17;color:var(--ink);border:1px solid var(--line)"><option value="verbal">Consent: verbal</option><option value="written">Consent: written</option><option value="self (owner)">This is me</option></select>
+        </div>
         <div class="field-group">
           <button type="submit">Register</button>
           <span class="help" tabindex="0" aria-label="Register button help">?<span class="help-tooltip">Save the visitor name and reference photo so future Ring arrivals can be matched and named.</span></span>
@@ -62,7 +66,7 @@
     </form>
     <h2>Known Visitors</h2>
     <table id="visitors-table">
-      <thead><tr><th>Name</th><th>Photo</th><th>Opt‑Out</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Photo</th><th>Consent</th><th>Opt‑Out</th><th>Actions</th></tr></thead>
       <tbody></tbody>
     </table>
   </section>
@@ -76,6 +80,30 @@
   </main>
 
   <script>
+    function adminToken() {
+      let t = sessionStorage.getItem('adminToken');
+      if (!t) { t = prompt('Enter your owner access token') || ''; sessionStorage.setItem('adminToken', t); }
+      return t;
+    }
+    async function api(url, opts = {}) {
+      const resp = await fetch(url, { ...opts, headers: { ...(opts.headers || {}), Authorization: 'Bearer ' + adminToken() } });
+      if (resp.status === 401) { sessionStorage.removeItem('adminToken'); alert('Owner access token was not accepted.'); }
+      return resp;
+    }
+    // Photos are encrypted at rest and only served to the authenticated owner.
+    async function hydrateImages(root) {
+      for (const img of root.querySelectorAll('img[data-src]')) {
+        const r = await api(img.dataset.src);
+        if (r.ok) img.src = URL.createObjectURL(await r.blob());
+        img.removeAttribute('data-src');
+      }
+    }
+    async function optOutVisitor(id) {
+      if (!confirm('Opt this visitor out? Their face template and photo are deleted now and they will no longer be recognised.')) return;
+      const resp = await api(`/visitors/${encodeURIComponent(id)}/optout`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ optOut: true }) });
+      if (!resp.ok) return alert('Failed to opt out visitor');
+      await refresh();
+    }
     function escapeHtml(value) {
       const element = document.createElement('span');
       element.textContent = value ?? '';
@@ -83,36 +111,37 @@
     }
 
     async function loadVisitors() {
-      const resp = await fetch('/visitors');
+      const resp = await api('/visitors');
       const visitors = await resp.json();
       const tbody = document.querySelector('#visitors-table tbody');
       tbody.innerHTML = '';
       visitors.forEach(v => {
         const tr = document.createElement('tr');
         const photo = v.photoPath
-          ? `<img class="visitor-photo" src="${escapeHtml(v.photoPath)}" alt="${escapeHtml(v.name)} photo" />`
+          ? `<img class="visitor-photo" data-src="${escapeHtml(v.photoPath)}" alt="${escapeHtml(v.name)} photo" />`
           : '';
-        tr.innerHTML = `<td>${escapeHtml(v.name)}</td><td>${photo}</td><td>${v.optOut ? '✅' : ''}</td><td><button type="button" class="danger" onclick="deleteVisitor('${v.id}')">Delete name and photo</button></td>`;
+        tr.innerHTML = `<td>${escapeHtml(v.name)}</td><td>${photo}</td><td>${v.consent ? escapeHtml(v.consent.method) + ', ' + new Date(v.consent.confirmedAt).toLocaleDateString() : ''}</td><td>${v.optOut ? '✅ ' + new Date(v.optOutAt).toLocaleDateString() : `<button type="button" onclick="optOutVisitor('${v.id}')">Opt out</button>`}</td><td><button type="button" class="danger" onclick="deleteVisitor('${v.id}')">Delete name and photo</button></td>`;
         tbody.appendChild(tr);
       });
+      await hydrateImages(tbody);
     }
 
     async function deleteVisitor(id) {
       if (!confirm('Delete this visitor name and stored photo?')) return;
-      const resp = await fetch(`/visitors/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const resp = await api(`/visitors/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (!resp.ok) return alert('Failed to delete visitor');
       await refresh();
     }
 
     async function deleteEvent(eventId) {
       if (!confirm('Delete this unrecognized visitor event and its snapshot?')) return;
-      const resp = await fetch(`/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
+      const resp = await api(`/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
       if (!resp.ok) return alert('Failed to delete visitor event');
       await refresh();
     }
 
     async function loadEvents() {
-      const resp = await fetch('/events');
+      const resp = await api('/events');
       const events = await resp.json();
       const tbody = document.querySelector('#events-table tbody');
       tbody.innerHTML = '';
@@ -129,32 +158,36 @@
           : '';
         const action = registerAction + deleteAction;
         const registeredPhoto = !e.unknown && e.registeredPhotoUrl
-          ? `<img class="visitor-photo" src="${escapeHtml(e.registeredPhotoUrl)}" alt="Registered photo of ${escapeHtml(name)}" title="Registered visitor photo" />`
+          ? `<img class="visitor-photo" data-src="${escapeHtml(e.registeredPhotoUrl)}" alt="Registered photo of ${escapeHtml(name)}" title="Registered visitor photo" />`
           : '';
         const arrivalPhoto = e.snapshotUrl
-          ? `<img class="visitor-photo" src="${escapeHtml(e.snapshotUrl)}" alt="Visitor arrival photo" title="Arrival snapshot" />`
+          ? `<img class="visitor-photo" data-src="${escapeHtml(e.snapshotUrl)}" alt="Visitor arrival photo" title="Arrival snapshot" />`
           : '';
         const photo = registeredPhoto || arrivalPhoto ? `<div>${registeredPhoto}${arrivalPhoto}</div>` : '';
-        tr.innerHTML = `<td>${new Date(e.timestamp).toLocaleTimeString()}</td><td>${e.type}</td><td class="${e.unknown ? 'unknown' : ''}">${escapeHtml(name)}${action}</td><td>${photo}</td><td>${e.score ? e.score.toFixed(2) : ''}</td>`;
+        tr.innerHTML = `<td>${new Date(e.timestamp).toLocaleString()}</td><td>${e.type}</td><td class="${e.unknown ? 'unknown' : ''}">${escapeHtml(name)}${action}</td><td>${photo}</td><td>${e.score ? e.score.toFixed(2) : ''}</td>`;
         tbody.appendChild(tr);
       });
+      await hydrateImages(tbody);
     }
 
     function showRegistration(button, snapshotUrl) {
       const container = button.parentElement;
-      container.innerHTML = `<span class="field-group"><input type="text" placeholder="Assign visitor name" required /><span class="help" tabindex="0" aria-label="Assigned name help">?<span class="help-tooltip">Enter the name this person should be identified as in future Ring notifications.</span></span></span> <button type="button">Save</button>`;
+      container.innerHTML = `<span class="field-group"><input type="text" placeholder="Assign visitor name" required /><span class="help" tabindex="0" aria-label="Assigned name help">?<span class="help-tooltip">Enter the name this person should be identified as in future Ring notifications.</span></span></span> <label style="font-size:13px;color:var(--muted)"><input type="checkbox" class="inline-consent" style="height:auto" /> This person agreed to be recognised (verbal)</label> <button type="button">Save</button>`;
       const input = container.querySelector('input');
       const save = container.querySelector('button');
-      save.onclick = () => registerVisitor(input.value.trim(), snapshotUrl);
+      save.onclick = () => {
+        if (!container.querySelector('.inline-consent').checked) return alert('Confirm the visitor agreed before saving a face template.');
+        registerVisitor(input.value.trim(), snapshotUrl, undefined, 'verbal');
+      };
     }
 
-    async function registerVisitor(name, imageUrl, imageData) {
+    async function registerVisitor(name, imageUrl, imageData, consentMethod) {
       if (!name) return alert('Please enter a visitor name.');
       if (!imageUrl && !imageData) return alert('Choose a local photo or provide a public image URL.');
-      const resp = await fetch('/visitors', {
+      const resp = await api('/visitors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, imageUrl: imageUrl || undefined, imageData: imageData || undefined })
+        body: JSON.stringify({ name, imageUrl: imageUrl || undefined, imageData: imageData || undefined, consent: { confirmed: true, method: consentMethod } })
       });
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}));
@@ -164,7 +197,7 @@
     }
     async function loadRingStatus() {
       try {
-        const resp = await fetch('/ring/status');
+        const resp = await api('/ring/status');
         const status = await resp.json();
         document.querySelector('#ring-status').textContent = status.connected
           ? `Connected: ${status.cameraNames.join(', ')} · Automatic face monitoring every ${status.pollIntervalSeconds} seconds`
@@ -178,7 +211,7 @@
       const status = document.querySelector('#ring-status');
       status.textContent = 'Capturing snapshot...';
       try {
-        const resp = await fetch('/ring/capture', { method: 'POST' });
+        const resp = await api('/ring/capture', { method: 'POST' });
         const result = await resp.json();
         status.textContent = result.success ? 'Snapshot captured' : (result.error || 'Capture failed');
         await refresh();
@@ -205,7 +238,8 @@
       await registerVisitor(
         document.querySelector('#visitor-name').value.trim(),
         document.querySelector('#visitor-image').value.trim(),
-        imageData
+        imageData,
+        document.querySelector('#consent-method').value
       );
       event.target.reset();
     });
