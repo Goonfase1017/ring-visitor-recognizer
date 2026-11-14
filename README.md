@@ -1,64 +1,69 @@
 # Visitor Recognizer
 
-## Run
+Hosted web app that works with Ring cameras through the Ring Appstore and the official Ring Partner API
+(Amazon Vision API). Each customer gets an arrival log with snapshots for doorbell presses and motion.
+Facial recognition is optional, off by default, behind a separate explicit consent, and only recognizes people the
+customer enrolls themselves. All processing runs server-side on Render (United States).
 
-```powershell
-npm install
+## Ring Developer Portal endpoints
+
+| Console field | URL |
+| --- | --- |
+| Account Link URL | `https://ring-visitor-recognizer.onrender.com/ring/link` |
+| App Homepage URL | `https://ring-visitor-recognizer.onrender.com/ring/config` |
+| Token Exchange URL | `https://ring-visitor-recognizer.onrender.com/oauth/token` |
+| Webhook URL | `https://ring-visitor-recognizer.onrender.com/ring/webhook` |
+
+Public pages: `/`, `/support.html`, `/privacy.html`, `/terms.html`, `/security.html`. Health check: `/health`.
+
+## How the Ring integration works
+
+1. **Token exchange** (`POST /oauth/token`, form-encoded `code` + `client_id` from Ring): exchanges the code at
+   `https://oauth.ring.com/oauth/token`, calls `GET https://api.amazonvision.com/v1/users/me`, stores the token pair and
+   Ring Account ID **unclaimed** (encrypted), and only then returns 200. Any failure returns non-2xx. Duplicate
+   deliveries of the same code are answered without a second exchange. Unclaimed tokens are deleted after 15 minutes.
+2. **Account link** (`GET /ring/link?nonce&time`): rejects `time` older than 600 s or in the future (also on every
+   POST that carries nonce/time), shows Create account / Sign in. Only after sign-in does the server match the nonce
+   (`HMAC-SHA256(key, "<time>:<accountId>")`, URL-safe base64 without padding, constant-time) against unclaimed tokens,
+   claim it for that user, `POST /v1/accounts/me/app-integrations {account_identifier: masked email, nonce}` and
+   `PATCH {status: "completed"}`, then shows a confirmation with the shared cameras.
+3. **Webhooks** (`POST /ring/webhook`): `X-Signature: sha256=<hex>` verified over the raw body; 200 returned
+   immediately; events processed asynchronously and deduplicated on `meta.request_id`. Handles `motion_detected`,
+   `button_press`, `device_added/removed/online/offline`, `app_integration_added/removed`,
+   `subscription_activated/deactivated`.
+4. **Snapshots**: `POST /v1/devices/{id}/media/image/download` (`at_timestamp` = event time; follows the 303),
+   retried while the recording is not ready. Devices with `e2e_encryption.enabled` (TAKE/E2EE) or unreadable media are
+   logged as “Encrypted video” without a picture. Privacy zones are blacked out before anything is stored or analysed.
+5. **Tokens**: refreshed silently before expiry and on 401, and proactively about once a day; every refresh persists
+   the new refresh token. Every Ring request sends `User-Agent: VisitorRecognizer/1.0` and a stable `Hardware_Id`
+   UUID per Ring account.
+
+## Environment
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `RING_CLIENT_ID`, `RING_CLIENT_SECRET` | yes | Ring app credentials |
+| `RING_HMAC_SIGNATURE_KEY` | yes | Nonce + webhook verification |
+| `DATA_ENCRYPTION_KEY` | yes | 32-byte key (hex or base64) for AES-256-GCM at rest. `openssl rand -base64 32` |
+| `DATABASE_URL` | strongly recommended | Postgres connection string. Without it data is kept in encrypted files under `DATA_DIR`, which Render's free tier wipes on restart |
+| `DATABASE_SSL` | no | `true` to require TLS to Postgres (use for external connection strings) |
+| `PUBLIC_APP_URL` | no | Defaults to the Render URL |
+| `ADMIN_TOKEN` | no | Bearer token for the operator-only `GET /ops/status` (counts only, no personal data) |
+| `RETENTION_DAYS` | no | Arrivals/snapshots retention, default 30 |
+| `APP_NAME`, `SUPPORT_EMAIL` | no | Display values |
+| `RECOGNITION_BLOCKED_STATES` | no | Default `IL,TX,WA`: no facial recognition for cameras Ring locates in these states |
+
+## Develop
+
+```sh
+npm ci
+npm run build
+npm test                       # unit + integration tests against a local mock of Ring's API
+TEST_DATABASE_URL=postgres://... npm test   # same suite against Postgres
 npm start
 ```
 
-The dashboard is available at `http://localhost:3000/`.
+The image step (`scripts/embed_face.py`) needs Python 3 with `ai-edge-litert pillow numpy opencv-python-headless`
+(installed in the Docker image). The bundled model is `model/mobile_facenet.tflite`.
 
-## Face runtime
-
-Face embeddings are generated server-side (on the app's Render service) with Python and LiteRT AI Edge:
-
-```powershell
-py -3.13 -m pip install ai-edge-litert pillow numpy
-```
-
-The app uses `model/mobile_facenet.tflite` through `scripts/embed_face.py`.
-
-## Ring refresh token
-
-`ring-client-api` includes an authentication CLI. Run it from this project directory:
-
-```powershell
-npx ring-auth-cli
-```
-
-The command asks for your Ring email address, password, and verification code if Ring sends an MFA challenge. Copy the printed refresh token into `.env`:
-
-```dotenv
-RING_REFRESH_TOKEN=your_refresh_token
-```
-
-Restart the app after changing `.env`. Keep the refresh token private.
-
-## AWS notifications
-
-Set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, and `AWS_SNS_TOPIC_ARN` in `.env` to enable SNS topic notifications.
-
-To receive visitor alerts by text message, also set:
-
-```dotenv
-VISITOR_SMS_PHONE=+14245566170
-```
-
-The phone number must use E.164 format, including the leading `+` and country code. Ring motion notifications and app visitor notifications are separate; disabling or configuring Ring notifications does not disable Ring visitor-recognition alerts.
-
-Recognition events are persisted encrypted in `data/events.json.enc`; snapshots are encrypted in `data/media/`. Events older than `RETENTION_DAYS` (default 30) are deleted by an hourly job.
-
-
-## Security and privacy configuration
-
-Required environment variables in production:
-
-- `ADMIN_TOKEN`: owner bearer token for every data API (dashboard prompts for it).
-- `DATA_ENCRYPTION_KEY`: 32-byte key (base64 or hex) for AES-256-GCM encryption at rest. Generate with `openssl rand -base64 32`. Without it the app refuses to store personal data.
-- `RETENTION_DAYS` (default 30), `AUDIT_RETENTION_DAYS` (default 365).
-
-Owner endpoints: `GET /privacy/export`, `DELETE /privacy/all`, `GET /audit`, `PATCH /visitors/:id/optout` (deletes the face template), `DELETE /visitors/:id`, `DELETE /events/:id`.
-Registration requires `consent: { confirmed: true, method }`; the consent time, method and statement are stored with the visitor.
-
-See `public/security.html` for vulnerability management and incident response.
+Not affiliated with or endorsed by Ring LLC or Amazon.

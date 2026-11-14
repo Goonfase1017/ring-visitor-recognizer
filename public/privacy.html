@@ -1,10 +1,70 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Privacy Policy | Visitor Recognizer</title><link rel="icon" href="/logo.svg"><style>body{margin:0;background:#08111f;color:#eef6ff;font-family:system-ui,sans-serif}main{max-width:820px;margin:auto;padding:48px 24px}a{color:#53d6d0}section{margin:20px 0;padding:24px;border:1px solid #263a50;border-radius:16px;background:#0e1c2e}h1{margin-top:0}li,p{color:#bac8d8;line-height:1.65}</style></head><body><main><a href="/ring-visitor-recognizer">← Visitor Recognizer</a><h1>Privacy Policy</h1><p>Effective: November 13, 2026. Visitor Recognizer is an independent app by Aoi Corp. It works with Ring cameras through the Ring Appstore but is not made or endorsed by Ring.</p>
-<section><h2>Where your data is processed and stored</h2><p>All face detection, face-template (embedding) generation, and matching run <strong>server-side</strong> on the app's cloud service, hosted on Render (render.com) in the United States. Processing does <strong>not</strong> run on your phone or camera, and no other third-party face-recognition service is used. The app uses the open MobileFaceNet model, run by the app's own server.</p><p>The following is stored in the app service's data directory on Render: visitor names, registration photos, face templates (embeddings), consent records, arrival events with snapshots, and an access audit log. Everything except the audit log is encrypted with AES-256-GCM before it is written to disk, using a key held only in the service's environment configuration. Temporary image copies used while processing are deleted right after a template is made.</p></section>
-<section><h2>Biometric data</h2><p>A face template is created only for a person the account owner registers, and only after the owner confirms that person has consented. Unregistered visitors seen by the camera are compared against registered templates; no template is kept for them. Their snapshot is kept as an event for up to 30 days unless deleted sooner. Biometric data is never sold, shared, or used for advertising, and is never used to make decisions with legal or similarly significant effects.</p></section>
-<section><h2>Consent</h2><p>Before a visitor can be registered, the owner must tick a consent statement confirming the person agreed, and choose how consent was given (verbal, written, or "this is me"). The app records the time, method, and exact statement with the visitor record. Registration is refused without it.</p></section>
-<section><h2>Opting out and deletion</h2><p>A registered visitor can ask the owner to opt them out at any time. Opt-out immediately deletes their face template and photo, and they are no longer matched. The owner can also delete a visitor, any event, or all data at once, and can export all stored data. Deletions remove the encrypted files from the service right away.</p></section>
-<section><h2>Retention</h2><p>Arrival events and snapshots are deleted automatically 30 days after capture by an hourly retention job. Visitor records are kept until the owner deletes them or the visitor opts out. Audit-log entries are kept for 12 months. Unlinking the Ring account or emailing us lets us delete the account's data.</p></section>
-<section><h2>Ring account access</h2><p>The app uses Ring authorization to read camera and doorbell events and snapshots for the owner's devices only. It does not access Ring video for any other purpose, and no person reviews your video.</p></section>
-<section><h2>Notifications</h2><p>If the owner turns on alerts, notification text (for example "Visitor has arrived") is sent through Amazon SNS. No photos or face templates are included in alerts.</p></section>
-<section><h2>Security</h2><p>Personal data is encrypted at rest and in transit (HTTPS). All data APIs require the owner's access token, and every access is written to an audit log. See our <a href="/security.html">Security page</a> for vulnerability management and incident response.</p></section>
-<section><h2>Contact</h2><p>Privacy questions or deletion requests: <a href="mailto:mussadrammeh@protonmail.com">mussadrammeh@protonmail.com</a>.</p></section></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy | Visitor Recognizer</title>
+<meta name="description" content="Visitor Recognizer is a hosted web app that works with Ring cameras: an arrival log with snapshots, plus optional, opt-in recognition of people you enroll yourself.">
+<link rel="icon" href="/logo.svg" type="image/svg+xml"><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main class="narrow" style="width:min(820px,calc(100% - 32px))">
+<header class="top"><a class="brand" href="/" style="text-decoration:none;color:inherit"><img src="/logo.svg" alt="" width="44" height="44"><div><strong>Visitor Recognizer</strong><span>Works with Ring cameras</span></div></a>
+<nav aria-label="Account"><a class="button" href="/signin">Sign in</a> <a class="button primary" href="/signup">Create account</a></nav></header>
+
+<h1>Privacy Policy</h1>
+<p class="muted">Effective November 14, 2026. Applies to the Visitor Recognizer web app at ring-visitor-recognizer.onrender.com, operated by Aoi Corp (“we”). Visitor Recognizer works with Ring cameras through the Ring Appstore and is not made or endorsed by Ring.</p>
+
+<section><h2>Summary</h2><ul>
+<li>We process your Ring snapshots on our own server, hosted by Render in the United States. Nothing runs on your phone or camera.</li>
+<li>Facial recognition is optional, off by default, and only ever recognizes people <strong>you</strong> enroll. Everyone else is “Unknown” and no face data is kept about them.</li>
+<li>We never sell your data, never use it for advertising, and never share or compare it across customers.</li>
+<li>Arrivals and snapshots are deleted after 30 days. You can delete anything, or everything, at any time.</li></ul></section>
+
+<section><h2>What we collect and why</h2>
+<table><thead><tr><th>Data</th><th>Why</th><th>How long</th></tr></thead><tbody>
+<tr><td>Your account email and a scrypt hash of your password</td><td>To sign you in</td><td>Until you delete your account</td></tr>
+<tr><td>Ring access and refresh tokens, your Ring Account ID and Ring email (from Ring when you connect)</td><td>To read snapshots and events from the cameras you chose to share; to link your Ring account to your Visitor Recognizer account</td><td>Until you remove the app in Ring, disconnect it here, or delete your data. Unclaimed tokens from an unfinished connection are deleted after 15 minutes</td></tr>
+<tr><td>Camera names, online status, coarse location (US state) and video-encryption and privacy-zone settings</td><td>To show your cameras, respect privacy zones, and apply state biometric laws</td><td>While the camera is shared; removed when Ring tells us the camera was removed</td></tr>
+<tr><td>Arrivals: time, camera, event type, and a snapshot from Ring (privacy zones blacked out)</td><td>To show your arrival log</td><td>30 days, then deleted automatically</td></tr>
+<tr><td>Face templates of people you enroll (only if you turn on facial recognition)</td><td>To name those people in your arrivals</td><td>Until you delete the person, turn recognition off, delete your data or account, or one year after your last sign-in</td></tr>
+<tr><td>Enrollment records: the person's name, the date, and how you confirmed they agreed</td><td>To show your enrollment list and document consent</td><td>Same as the face template</td></tr>
+<tr><td>Activity log (sign-ins, connections, enrollments, deletions)</td><td>Security, and so you can see what happened in your account</td><td>12 months</td></tr>
+<tr><td>Deletion-request log (date, type, counts; no content)</td><td>Compliance record that deletions were carried out</td><td>12 months, kept even after account deletion</td></tr></tbody></table>
+<p>We do not collect the photo you use to enroll someone: it is used once to create the template and then discarded. We do not collect location beyond the US state Ring reports, and we do not collect audio or video clips.</p></section>
+
+<section id="biometric"><h2>Biometric information (facial recognition)</h2>
+<p><strong>What:</strong> a face template is a list of numbers describing facial geometry, created by a face-recognition model that runs on our server. It is biometric information under laws such as the Illinois Biometric Information Privacy Act (BIPA), the Texas Capture or Use of Biometric Identifier Act, the Washington biometric identifier law, and the California Consumer Privacy Act.</p>
+<p><strong>When:</strong> only after you turn on facial recognition by ticking an unchecked consent box and confirming. Consent to facial recognition is separate from creating an account and from connecting Ring.</p>
+<p><strong>Whose:</strong> only people you enroll yourself, one at a time, after confirming each of them agreed to be enrolled. We never enroll anyone automatically, never use faces from any other source, and have no database of faces of public figures or anyone else. Faces of people you have not enrolled are compared with your enrollments only to decide they are “Unknown”; their templates are discarded immediately and never stored.</p>
+<p><strong>Purpose:</strong> only to show you which enrolled person arrived. We do not use biometric data for marketing, advertising, analytics or model training, and we do not sell, lease, trade or otherwise profit from it.</p>
+<p><strong>Where and how it's protected:</strong> templates are stored only on our server (Render, United States), encrypted with AES-256-GCM, transmitted only over TLS, and are only ever compared with snapshots from your own Ring account. No other customer, and no other customer's cameras, can match against your enrollments.</p>
+<p><strong>Retention and destruction:</strong> templates are permanently deleted when you delete the person, when you turn off facial recognition, when you delete your data or account, or automatically one year after your last sign-in — whichever comes first.</p>
+<p><strong>Disclosure:</strong> we do not disclose biometric data to anyone, except where required by law or valid legal process.</p>
+<p><strong>State-law notice:</strong> facial recognition is not offered for cameras that Ring reports in Illinois, Texas or Washington, where the law requires the enrolled person's own written release. Arrival logging still works there. Wherever you are, you are responsible for getting the permission of each person you enroll and for complying with laws that apply to you.</p></section>
+
+<section><h2>How data is processed</h2><p>Ring sends us an event when a shared doorbell is pressed or a shared camera detects motion. Our server then requests the snapshot for that moment from Ring's official Partner API, blacks out your privacy zones, and stores the result encrypted. If facial recognition is on and you have enrolled people, the server compares faces in the snapshot with your enrollments. All of this happens on the Visitor Recognizer server; no third-party face service is used.</p></section>
+
+<section><h2>Sharing</h2><ul>
+<li><strong>Render (render.com)</strong> hosts our server and database in the United States as our infrastructure provider. It stores only encrypted data and does not use it for its own purposes.</li>
+<li><strong>Ring</strong> provides the events and snapshots you authorize. We send Ring your masked Visitor Recognizer email (for example a***e@example.com) when you connect, so Ring can show which account is linked.</li></ul>
+<p>We share nothing else, with no one else. No data is sold. When you delete data, it is deleted from our live database immediately. We make no separate copies or backups of customer content; if our hosting provider keeps short-term database backups, they hold only data encrypted with our key and expire on the provider's schedule.</p></section>
+
+<section><h2>Your choices and rights</h2><ul>
+<li><strong>Revoke facial-recognition consent</strong> any time in the app (Facial recognition → Turn off). All templates are deleted immediately and permanently.</li>
+<li><strong>Delete an enrolled person</strong> any time; it is immediate and permanent, and confirmed in the app.</li>
+<li><strong>Delete any arrival</strong>, or <strong>delete all my data</strong>, or <strong>delete my account</strong> in Privacy and your data. Each asks you to confirm and shows a confirmation when done. Deletion requests are recorded in a deletion log.</li>
+<li><strong>Download your data</strong> as a file in the app.</li>
+<li><strong>Disconnect Ring</strong> in the Ring app (Ring Appstore → My Apps → Visitor Recognizer → Remove). We delete your Ring tokens as soon as Ring notifies us.</li>
+<li>If an enrolled person asks you to remove them, delete them in the app. They can also contact us at <a href="mailto:mussadrammeh@protonmail.com">mussadrammeh@protonmail.com</a>.</li>
+<li>California and other US residents may request access, correction or deletion by email; we respond within 30 days and do not discriminate for exercising rights.</li></ul></section>
+
+<section><h2>Security</h2><p>TLS in transit; AES-256-GCM at rest for tokens, emails, templates, snapshots and records; scrypt password hashing; HttpOnly secure session cookies with CSRF protection and sign-in rate limiting; per-account access checks on every request; an activity log you can view. See <a href="/security.html">Security</a>.</p></section>
+
+<section><h2>Children</h2><p>Visitor Recognizer is not directed to children and accounts are for adults (18+). Do not enroll a child unless you are their parent or guardian.</p></section>
+
+<section><h2>Changes and contact</h2><p>We will post changes here and update the effective date; material changes to how biometric data is used will require new consent in the app. Questions: <a href="mailto:mussadrammeh@protonmail.com">mussadrammeh@protonmail.com</a>.</p></section>
+
+<footer class="foot"><a href="/">Home</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/support.html">Support</a> · <a href="/security.html">Security</a><br>Visitor Recognizer is an independent app by Aoi Corp. It is not made, sponsored or endorsed by Ring LLC or Amazon. Ring is a trademark of Ring LLC.</footer>
+</main>
+</body>
+</html>

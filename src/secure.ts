@@ -1,25 +1,36 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from "crypto";
-import { promises as fs } from "fs";
-import path from "path";
-import type { Request, Response, NextFunction } from "express";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  createHmac,
+  randomBytes,
+  scrypt as scryptCb,
+  timingSafeEqual,
+} from "crypto";
+import { promisify } from "util";
 import { CONFIG } from "./config";
 
+const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
+
 /**
- * Application-level encryption at rest (AES-256-GCM).
- * Every stored visitor record, face embedding, event record, and photo is encrypted
- * with DATA_ENCRYPTION_KEY before it is written to the service's data directory.
- * File layout: "AOI1" magic (4 bytes) | IV (12 bytes) | auth tag (16 bytes) | ciphertext.
+ * Application-level encryption at rest (AES-256-GCM) with DATA_ENCRYPTION_KEY.
+ * Layout: "AOI1" magic (4 bytes) | IV (12 bytes) | auth tag (16 bytes) | ciphertext.
  */
 const MAGIC = Buffer.from("AOI1");
 
+let cachedKey: { raw: string; key: Buffer } | null = null;
 function key(): Buffer | null {
-  const raw = CONFIG.DATA_ENCRYPTION_KEY;
+  const raw = process.env.DATA_ENCRYPTION_KEY ?? CONFIG.DATA_ENCRYPTION_KEY;
   if (!raw) return null;
-  // Accept base64 or hex; anything else is hashed to 32 bytes.
-  if (/^[a-f0-9]{64}$/i.test(raw)) return Buffer.from(raw, "hex");
-  const b64 = Buffer.from(raw, "base64");
-  if (b64.length === 32) return b64;
-  return createHash("sha256").update(raw).digest();
+  if (cachedKey && cachedKey.raw === raw) return cachedKey.key;
+  let k: Buffer;
+  if (/^[a-f0-9]{64}$/i.test(raw)) k = Buffer.from(raw, "hex");
+  else {
+    const b64 = Buffer.from(raw, "base64");
+    k = b64.length === 32 ? b64 : createHash("sha256").update(raw).digest();
+  }
+  cachedKey = { raw, key: k };
+  return k;
 }
 
 export function encryptionEnabled(): boolean {
@@ -36,77 +47,88 @@ export function encrypt(plain: Buffer): Buffer {
 }
 
 export function decrypt(data: Buffer): Buffer {
-  if (data.subarray(0, 4).equals(MAGIC)) {
-    const k = key();
-    if (!k) throw new Error("DATA_ENCRYPTION_KEY is required to read encrypted data.");
-    const iv = data.subarray(4, 16);
-    const tag = data.subarray(16, 32);
-    const decipher = createDecipheriv("aes-256-gcm", k, iv);
-    decipher.setAuthTag(tag);
-    return Buffer.concat([decipher.update(data.subarray(32)), decipher.final()]);
+  if (!data.subarray(0, 4).equals(MAGIC)) throw new Error("Data is not in the encrypted format");
+  const k = key();
+  if (!k) throw new Error("DATA_ENCRYPTION_KEY is required to read encrypted data.");
+  const decipher = createDecipheriv("aes-256-gcm", k, data.subarray(4, 16));
+  decipher.setAuthTag(data.subarray(16, 32));
+  return Buffer.concat([decipher.update(data.subarray(32)), decipher.final()]);
+}
+
+export const encryptJson = (value: unknown): Buffer => encrypt(Buffer.from(JSON.stringify(value), "utf8"));
+export const decryptJson = <T>(data: Buffer): T => JSON.parse(decrypt(data).toString("utf8")) as T;
+
+/** Sub-key derived from the master key for a given purpose (blind indexes, hardware ids). */
+function derived(purpose: string): Buffer {
+  const k = key() ?? Buffer.from(CONFIG.RING_HMAC_SIGNATURE_KEY || "visitor-recognizer-dev");
+  return createHmac("sha256", k).update(`vr:${purpose}`).digest();
+}
+
+/** Deterministic keyed lookup value, so emails can be found without storing them in clear text. */
+export function blindIndex(value: string): string {
+  return createHmac("sha256", derived("blind-index")).update(value).digest("hex");
+}
+
+/**
+ * Stable UUID for Ring's required Hardware_Id header: one per Ring account (user + this system),
+ * or one install-level id before the Ring Account ID is known (code exchange and /v1/users/me).
+ */
+export function hardwareId(ringAccountId?: string): string {
+  const h = createHmac("sha256", derived("hardware-id")).update(ringAccountId ?? "install").digest();
+  h[6] = (h[6] & 0x0f) | 0x50; // version 5 (name based)
+  h[8] = (h[8] & 0x3f) | 0x80; // RFC 4122 variant
+  const x = h.subarray(0, 16).toString("hex");
+  return `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20, 32)}`;
+}
+
+export const randomToken = (bytes = 32): string => randomBytes(bytes).toString("base64url");
+export const sha256Hex = (s: string): string => createHash("sha256").update(s).digest("hex");
+
+export function safeEqual(a: string, b: string): boolean {
+  const x = Buffer.from(a, "utf8");
+  const y = Buffer.from(b, "utf8");
+  if (x.length !== y.length) {
+    timingSafeEqual(x, x); // keep timing roughly uniform
+    return false;
   }
-  return data; // legacy plaintext file written before encryption was added; re-encrypted on next save
-}
-
-export async function writeEncrypted(file: string, plain: Buffer | string) {
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.tmp`;
-  await fs.writeFile(tmp, encrypt(Buffer.isBuffer(plain) ? plain : Buffer.from(plain, "utf8")), { mode: 0o600 });
-  await fs.rename(tmp, file);
-}
-
-export async function readEncrypted(file: string): Promise<Buffer> {
-  return decrypt(await fs.readFile(file));
+  return timingSafeEqual(x, y);
 }
 
 // ---------------------------------------------------------------------------
-// Audit log: append-only JSON lines of every administrative/API access event.
+// Passwords: scrypt (N=2^15, r=8, p=1), 16-byte salt, 64-byte hash.
 // ---------------------------------------------------------------------------
-export async function audit(entry: Record<string, unknown>) {
-  const line = JSON.stringify({ at: new Date().toISOString(), ...entry }) + "\n";
-  try {
-    await fs.mkdir(path.dirname(CONFIG.AUDIT_LOG_PATH), { recursive: true });
-    await fs.appendFile(CONFIG.AUDIT_LOG_PATH, line, { mode: 0o600 });
-  } catch (err) {
-    console.error("Unable to write audit log:", err);
-  }
+const SCRYPT = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16);
+  const hash = await scrypt(password, salt, 64, SCRYPT);
+  return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString("base64")}$${hash.toString("base64")}`;
 }
 
-export function auditMiddleware(req: Request, res: Response, next: NextFunction) {
-  if (req.path === "/health") return next();
-  const started = Date.now();
-  res.on("finish", () => {
-    void audit({
-      kind: "api_access",
-      method: req.method,
-      path: req.path,
-      status: res.statusCode,
-      actor: (res.locals.actor as string) ?? "anonymous",
-      ip: req.ip,
-      ms: Date.now() - started,
-    });
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const parts = stored.split("$");
+  if (parts.length !== 6 || parts[0] !== "scrypt") return false;
+  const [, n, r, p, saltB64, hashB64] = parts;
+  const expected = Buffer.from(hashB64, "base64");
+  const actual = await scrypt(password, Buffer.from(saltB64, "base64"), expected.length, {
+    N: Number(n),
+    r: Number(r),
+    p: Number(p),
+    maxmem: SCRYPT.maxmem,
   });
-  next();
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-// ---------------------------------------------------------------------------
-// Admin authentication: every API that reads or changes personal data requires
-// the owner's ADMIN_TOKEN as "Authorization: Bearer <token>".
-// ---------------------------------------------------------------------------
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const expected = CONFIG.ADMIN_TOKEN;
-  const header = req.header("authorization") ?? "";
-  const supplied = header.replace(/^Bearer\s+/i, "").trim();
-  if (!expected) {
-    res.locals.actor = "denied:no-admin-token-configured";
-    return res.status(503).json({ error: "ADMIN_TOKEN is not configured on the server" });
-  }
-  const a = createHash("sha256").update(supplied).digest();
-  const b = createHash("sha256").update(expected).digest();
-  if (!supplied || !timingSafeEqual(a, b)) {
-    res.locals.actor = "denied:invalid-token";
-    return res.status(401).json({ error: "Owner authentication required" });
-  }
-  res.locals.actor = "owner";
-  next();
+/** u***r@example.com — the form Ring shows the customer as the linked partner account. */
+export function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return "***";
+  const masked = local.length <= 2 ? `${local[0] ?? ""}***` : `${local[0]}***${local[local.length - 1]}`;
+  return `${masked}@${domain}`;
+}
+
+export function escapeHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string
+  );
 }

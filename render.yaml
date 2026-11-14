@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ring-visitor-recognizer
+    name: ring-visitor-recognizer # Render service slug (URL); the public app name is "Visitor Recognizer"
     runtime: docker
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
@@ -9,35 +9,25 @@ services:
         value: 3000
       - key: NODE_ENV
         value: production
-      - key: RING_REFRESH_TOKEN
-        sync: false
+      - key: PUBLIC_APP_URL
+        value: https://ring-visitor-recognizer.onrender.com
+      - key: APP_NAME
+        value: Visitor Recognizer
       - key: RING_CLIENT_ID
         sync: false
       - key: RING_CLIENT_SECRET
         sync: false
       - key: RING_HMAC_SIGNATURE_KEY
         sync: false
-      - key: RING_OAUTH_AUTHORIZE_URL
-        sync: false
-      - key: RING_OAUTH_TOKEN_URL
-        sync: false
-      - key: PUBLIC_APP_URL
-        value: https://ring-visitor-recognizer.onrender.com
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: AWS_DEFAULT_REGION
-        value: us-east-2
-      - key: AWS_SNS_TOPIC_ARN
-        sync: false
-      - key: VISITOR_SMS_PHONE
-        sync: false
       - key: ADMIN_TOKEN
         sync: false
       - key: DATA_ENCRYPTION_KEY
         sync: false
+      # Postgres connection string (Render Postgres "Internal Database URL"). Without it the app uses
+      # encrypted local files, which Render's free tier deletes on every restart/deploy.
+      - key: DATABASE_URL
+        sync: false
       - key: RETENTION_DAYS
         value: 30
-      - key: APP_NAME
-        value: Visitor Recognizer
+      - key: SUPPORT_EMAIL
+        value: mussadrammeh@protonmail.com

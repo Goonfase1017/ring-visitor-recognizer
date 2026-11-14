@@ -1,0 +1,6 @@
+# Ranges tested locally on 2026-11-14 (opencv 4.14, numpy 2.5, pillow 13, ai-edge-litert 2.3).
+# OpenCV 5 removed cv2.CascadeClassifier, which the face detector needs.
+opencv-python-headless>=4.10,<5
+numpy>=1.26,<3
+pillow>=10,<14
+ai-edge-litert>=1.0,<3

@@ -4,13 +4,38 @@ on:
   pull_request:
   schedule:
     - cron: "0 14 * * 1"
+permissions:
+  contents: read
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+        with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npx tsc --noEmit
-      - run: npm audit --omit=dev --audit-level=critical
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - name: Dependency audit (fails on high or critical)
+        run: npm audit --audit-level=high
+  test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vr
+          POSTGRES_PASSWORD: vrpass
+          POSTGRES_DB: vrtest
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vr" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm test
+        env:
+          TEST_DATABASE_URL: postgres://vr:vrpass@localhost:5432/vrtest

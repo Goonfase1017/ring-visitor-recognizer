@@ -1,21 +1,27 @@
 {
   "name": "Visitor Recognizer",
-  "tagline": "Know familiar faces at your door",
+  "tagline": "Arrival log for your door, with optional recognition of people you enroll",
   "category": "Home & Security",
-  "shortDescription": "Know which registered, consenting visitors are at your door. Works with Ring.",
-  "description": "Visitor Recognizer tells you when someone you know arrives. Register trusted visitors who have agreed to it, then get a named alert when they show up on your Ring doorbell or camera. Face matching runs on Visitor Recognizer's secure cloud service (hosted on Render in the US), not on your phone. Every visitor record, face template and snapshot is encrypted at rest, consent is recorded for each registration, opt-out deletes a person's face template immediately, and arrival events delete automatically after 30 days. Visitor Recognizer is an independent app by Aoi Corp and is not made or endorsed by Ring.",
-  "privacy": "Face templates, visitor names, photos, consent records and event snapshots are processed and stored server-side on the app's Render-hosted service, encrypted with AES-256-GCM. Events auto-delete after 30 days; visitor data is deleted on opt-out or owner request. No data is sold or shared.",
+  "shortDescription": "See every doorbell press and motion with a snapshot. Optionally name people you enroll yourself. Off by default.",
+  "description": "Visitor Recognizer keeps an arrival log for your Ring doorbell and cameras: each doorbell press or motion event, with a snapshot. If you choose, turn on facial recognition and enroll the people you want named, such as family. Anyone else shows as Unknown and nothing is kept about them. It's a hosted web app; processing runs on our server (Render, US) and data is encrypted. Arrivals delete after 30 days. Delete anything any time.",
+  "privacy": "Snapshots, arrivals and (only if you turn on facial recognition) face templates of people you enroll are processed and stored on the Visitor Recognizer server hosted by Render in the US, encrypted with AES-256-GCM. Arrivals delete after 30 days. Never sold, never used for ads, never shared across customers. Delete people, arrivals, all data or your account in the app.",
   "features": [
-    "Named arrival alerts for registered visitors",
-    "Consent recorded for every registration",
-    "One-tap opt-out that deletes the face template",
-    "Encrypted storage of all visitor data",
-    "30-day automatic deletion of events",
-    "Export or delete all data at any time"
+    "Arrival log with snapshots for doorbell presses and motion",
+    "Optional facial recognition, off by default, separate consent",
+    "Recognizes only people you enroll yourself; others shown as Unknown",
+    "Delete enrolled people, arrivals, all data or your account in the app",
+    "Encrypted storage; arrivals auto-delete after 30 days"
   ],
   "requirements": [
-    "A Ring account",
-    "At least one Ring doorbell or camera"
+    "A Ring account with at least one Ring doorbell or camera",
+    "An active Ring Protection plan (for snapshots)",
+    "A web browser"
   ],
+  "urls": {
+    "website": "https://ring-visitor-recognizer.onrender.com/",
+    "support": "https://ring-visitor-recognizer.onrender.com/support.html",
+    "privacy": "https://ring-visitor-recognizer.onrender.com/privacy.html",
+    "terms": "https://ring-visitor-recognizer.onrender.com/terms.html"
+  },
   "logo": "public/logo.svg"
 }

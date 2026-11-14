@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="same-origin">
+<title>Dashboard | Visitor Recognizer</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml"><link rel="stylesheet" href="/app.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<main>
+  <div class="top">
+    <header class="brand"><img src="/logo.svg" alt="" width="44" height="44"><div><strong>Visitor Recognizer</strong><span>Works with Ring cameras</span></div></header>
+    <div><span id="who" class="muted"></span>
+      <form method="post" action="/signout" class="inline" id="signout"><input type="hidden" name="_csrf" id="signout-csrf"><button type="submit">Sign out</button></form>
+      <button type="button" id="help-btn">Help</button>
+    </div>
+  </div>
+  <div id="flash" role="status" aria-live="polite"></div>
+
+  <dialog id="tutorial" aria-labelledby="tut-title">
+    <p class="steps" id="tut-progress"></p>
+    <h2 id="tut-title"></h2>
+    <p id="tut-body"></p>
+    <div class="top"><button type="button" id="tut-skip" class="link">Skip tutorial</button><span><button type="button" id="tut-back">Back</button> <button type="button" id="tut-next" class="primary">Next</button></span></div>
+  </dialog>
+
+  <section aria-labelledby="ring-h">
+    <h2 id="ring-h">Ring connection</h2>
+    <div id="ring"></div>
+    <p class="muted small">Motion events arrive only for motion inside your camera's motion zones, and Smart Alerts can filter which motion is sent. If arrivals are missing, open the Ring app, go to your device settings, and check <strong>Motion Settings</strong> and <strong>Motion Zones</strong>. To change which cameras are shared or to remove this app, open the Ring app and go to Ring Appstore → My Apps → Visitor Recognizer.</p>
+  </section>
+
+  <section aria-labelledby="arr-h">
+    <div class="top"><h2 id="arr-h">Arrivals</h2><button type="button" id="reload">Refresh</button></div>
+    <p class="muted small">Each doorbell press or motion event, with a snapshot. Deleted automatically after <span class="retention">30</span> days.</p>
+    <div id="events" class="grid"></div>
+  </section>
+
+  <section aria-labelledby="fr-h">
+    <h2 id="fr-h">Facial recognition <span id="fr-state" class="tag"></span></h2>
+    <div id="fr-off">
+      <p>Optional. When it's on, arrivals show the names of people <strong>you enroll yourself</strong>. Everyone else is shown as “Unknown”, and nothing is kept about them. The arrival log works without it.</p>
+      <form id="consent-form">
+        <h3>What turning it on means</h3>
+        <ul>
+          <li><strong>What's collected:</strong> a face template (numbers that describe facial geometry) for each person you enroll. The photo you use is not kept.</li>
+          <li><strong>Why:</strong> only to show you who arrived at your door.</li>
+          <li><strong>Where:</strong> processed and stored encrypted on the Visitor Recognizer server (Render, United States).</li>
+          <li><strong>How long:</strong> until you delete the person or turn recognition off (or one year after your last sign-in). Turning it off permanently deletes every template.</li>
+          <li><strong>Never:</strong> sold, shared, used for ads, or compared with anyone else's enrollments.</li>
+        </ul>
+        <label class="check"><input type="checkbox" id="consent-box"> <span id="consent-text"></span></label>
+        <button type="submit" class="primary">Turn on facial recognition</button>
+      </form>
+    </div>
+    <div id="fr-on" hidden>
+      <p class="muted small" id="consent-info"></p>
+      <h3>Enrolled people</h3>
+      <div id="visitors"></div>
+      <h3>Enroll a person</h3>
+      <form id="enroll-form">
+        <label for="en-name">Name</label><input id="en-name" type="text" maxlength="80" required>
+        <label for="en-photo">Photo with only this person's face (JPEG, PNG or WebP)</label><input id="en-photo" type="file" accept="image/jpeg,image/png,image/webp">
+        <input type="hidden" id="en-event">
+        <p id="en-from-event" class="muted small" hidden>Using the selected arrival snapshot. <button type="button" class="link" id="en-clear">Use a photo instead</button></p>
+        <label for="en-method">How did this person agree?</label>
+        <select id="en-method"><option value="">Choose…</option><option>in person</option><option>in writing</option><option>by message</option><option>this is me</option></select>
+        <label class="check"><input type="checkbox" id="en-attest"> <span id="attest-text"></span></label>
+        <button type="submit" class="primary">Enroll</button>
+      </form>
+      <h3>Turn off facial recognition</h3>
+      <p class="muted small">Turning it off permanently deletes all enrolled faces and removes names from past arrivals. You can turn it on again later.</p>
+      <button type="button" class="danger" id="revoke">Turn off and delete all face templates</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="pr-h">
+    <h2 id="pr-h">Privacy and your data</h2>
+    <p class="small">We keep: your account email, a link to your Ring account (encrypted), your camera names, arrivals with snapshots (<span class="retention">30</span> days), face templates of people you enroll (only if recognition is on), and this activity log. Read the <a href="/privacy.html">Privacy Policy</a>.</p>
+    <a class="button" href="/api/export" download>Download my data</a>
+    <button type="button" class="danger" id="del-data">Delete all my data</button>
+    <button type="button" class="danger" id="del-account">Delete my account</button>
+    <h3>Activity log</h3>
+    <div id="activity" class="small"></div>
+  </section>
+
+  <dialog id="confirm" aria-labelledby="cf-title">
+    <h2 id="cf-title"></h2><p id="cf-body"></p>
+    <div id="cf-extra"></div>
+    <div class="top"><button type="button" id="cf-cancel">Cancel</button><button type="button" id="cf-ok" class="danger"></button></div>
+  </dialog>
+
+  <footer class="foot"><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/support.html">Support</a> · <a href="/security.html">Security</a></footer>
+</main>
+</body>
+</html>
