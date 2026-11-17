@@ -37,7 +37,8 @@ export function loadConfig() {
     SESSION_DAYS: Number(env.SESSION_DAYS) || 14,
 
     // Storage: Postgres when DATABASE_URL is set, otherwise encrypted local files.
-    DATABASE_URL: env.DATABASE_URL ?? "",
+    // Connection strings never contain whitespace; strip any pasted/wrapped spaces or newlines.
+    DATABASE_URL: (env.DATABASE_URL ?? "").replace(/\s+/g, ""),
     DATABASE_SSL: env.DATABASE_SSL === "true",
     DATA_DIR: env.DATA_DIR || "./data",
 
