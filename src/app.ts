@@ -623,6 +623,7 @@ export function createApp({ store, faces }: AppDeps) {
     "/security": "/security.html",
   };
   for (const [from, to] of Object.entries(legacy)) app.get(from, (_req, res) => res.redirect(301, to));
+  app.use("/listing", (_req, res, next) => { res.setHeader("Access-Control-Allow-Origin", "*"); next(); });
   app.use(express.static(path.join(process.cwd(), "public"), { index: "index.html", extensions: ["html"] }));
 
   app.use((_req, res) => res.status(404).send(messagePage("Page not found", "That page doesn't exist.", { href: "/", label: "Home" })));
