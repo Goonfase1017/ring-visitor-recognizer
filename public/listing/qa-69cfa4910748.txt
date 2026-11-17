@@ -1,0 +1,210 @@
+General Q1. Company primary business function
+TEXT: Aoi Corp is the developer name of Mussa Drammeh, an independent one-person software developer in Los Angeles. We build and operate Visitor Recognizer, a free hosted web app that works with Ring doorbells and cameras through the Ring Appstore. It keeps an arrival log of doorbell presses and motion with snapshots and, only if the customer opts in, names people the customer enrolled.
+
+General Q2. Primary place of business
+TEXT: Los Angeles, California, USA
+
+General Q3. Years in operation
+TEXT: 1
+
+Q4. Features provided through the Ring integration
+TEXT: Ring account linking from the Ring Appstore. An arrival log of doorbell presses and motion events from the cameras the customer shares, each with a snapshot fetched from the Ring Partner API, privacy zones blacked out. Optional facial recognition, off by default with its own consent, that names only people the customer enrolls; everyone else shows as Unknown. In-app deletion of any arrival, enrolled person, all data or the account, data download and an activity log.
+
+Q5. Serves users outside the US
+CHOICE: No
+
+Q6. Directed to children under 13
+CHOICE: No
+
+Q7. Data elements collected from Ring users
+TEXT: From Ring: Ring account ID and email, OAuth access and refresh tokens, shared camera names, online status, video encryption flag, privacy zones and US state, webhook events (doorbell press or motion, device id, time) and a JPEG snapshot for each event. No video clips and no audio. From the customer: account email and password hash, consent records, and only if recognition is on, names and face templates of people the customer enrolls.
+
+Q8. How each data element is used
+TEXT: Ring tokens, account ID and email: link the accounts and call the Ring Partner API. Camera details: list cameras, black out privacy zones, skip encrypted cameras, and turn recognition off for cameras in IL, TX or WA. Events and snapshots: show the arrival log. Face templates: compare faces in that customer snapshots only with that customer enrollments to show a name. Account email, password hash and activity log: sign-in, security and the customer own history. Nothing is used for ads, analytics or training.
+
+Q9. Handling of video metadata
+TEXT: We do not download video clips. For each webhook event we keep the camera name, event time, event type, processing status and, if recognition is on, matched names with scores and a count of unknown faces. Snapshots are re-encoded without EXIF metadata. All records are AES-256-GCM encrypted, visible only to the owning customer, and deleted after 30 days or sooner on request. Webhook request ids are kept 73 hours only to drop duplicates.
+
+Q10. Data minimization practices
+TEXT: We store snapshots, not video, and no audio. Enrollment photos are discarded after the face template is made. Faces of non-enrolled people are never stored; they are only counted as unknown. With recognition off (the default) no face processing happens. Automatic deletion jobs run in code: arrivals and snapshots after 30 days, unfinished Ring links after 15 minutes, templates one year after last sign-in, activity logs after 12 months. Retention is reviewed with each release.
+
+Q11. Option to request account deletion
+TEXT: Yes. In the app, Privacy and your data, Delete my account (type DELETE and the password) permanently and immediately deletes the account and all its data, including face templates, arrivals, snapshots, camera list and Ring tokens. Delete all my data removes everything but keeps the sign-in. Requests can also be emailed to mussadrammeh@protonmail.com.
+
+Q12. Use of customer data to train AI
+CHOICE: No, Ring data is not used for training AI models
+
+Q13. Use of Ring data beyond core service
+CHOICE: No, Ring data is only used to provide the service.
+
+Q14. Identify sensitive personal information
+CHOICE: No.
+
+Q15. Biometric data
+CHOICE: Yes.
+
+Q16. Health-related insights
+CHOICE: No.
+
+Q17. Precise geolocation
+CHOICE: No.
+
+Q18. Links to ToS, privacy policy, other docs
+TEXT: Privacy Policy: https://ring-visitor-recognizer.onrender.com/privacy.html . Terms of Service: https://ring-visitor-recognizer.onrender.com/terms.html . Security: https://ring-visitor-recognizer.onrender.com/security.html . Support: https://ring-visitor-recognizer.onrender.com/support.html . In-app disclosures and controls (after sign-in): https://ring-visitor-recognizer.onrender.com/app .
+
+Q19. Disclosure: purposes of processing
+TEXT: https://ring-visitor-recognizer.onrender.com/privacy.html sections What we collect and why (a Why column for each data type), Biometric information (Purpose) and How data is processed. Also in-app at https://ring-visitor-recognizer.onrender.com/app in the Facial recognition section (What turning it on means: Why).
+
+Q20. Disclosure: AI model training
+TEXT: https://ring-visitor-recognizer.onrender.com/privacy.html section Biometric information, Purpose: We do not use biometric data for marketing, advertising, analytics or model training. We do not use any Ring data to train AI models, so there is no training opt-in or opt-out to offer.
+
+Q21. Disclosure: retention periods
+TEXT: https://ring-visitor-recognizer.onrender.com/privacy.html section What we collect and why (How long column: arrivals and snapshots 30 days, templates until deleted or one year after last sign-in, logs 12 months) and Biometric information (Retention and destruction). In-app at https://ring-visitor-recognizer.onrender.com/app under Arrivals and Privacy and your data (30 days).
+
+Q22. Disclosure: third-party sharing and sub-processors
+TEXT: https://ring-visitor-recognizer.onrender.com/privacy.html section Sharing: Render (server hosting, United States), Neon (Postgres database on AWS us-east-2, storing only encrypted data), and Ring, which receives a masked account email at linking. No data is sold and nothing else is shared. Biometric information section, Disclosure: biometric data is not disclosed except where required by law.
+
+Q23. Disclosure: exercising privacy rights
+TEXT: https://ring-visitor-recognizer.onrender.com/privacy.html section Your choices and rights: in-app deletion of each item, all data or the account, Download my data, and access, correction or deletion requests by email to mussadrammeh@protonmail.com answered within 30 days. Controls are in-app at https://ring-visitor-recognizer.onrender.com/app under Privacy and your data.
+
+Q24. Disclosure: opt-out mechanisms
+TEXT: https://ring-visitor-recognizer.onrender.com/privacy.html section Your choices and rights: turn facial recognition off at any time (deletes all templates), delete enrolled people, and disconnect Ring in the Ring app. Facial recognition is opt-in and off by default. In-app at https://ring-visitor-recognizer.onrender.com/app via Turn off and delete all face templates.
+
+Q25. Disclosure: effect of training opt-out
+TEXT: Not provided, because it does not apply: Visitor Recognizer never uses Ring data or customer data to train AI models, so there is no training opt-out and no effect on the service. The no-training statement is in https://ring-visitor-recognizer.onrender.com/privacy.html section Biometric information.
+
+Q26. Disclosure: humans viewing customer data
+TEXT: https://ring-visitor-recognizer.onrender.com/security.html section Protections: Operator access is limited to the service owner; there is no staff tool to view customer snapshots or templates. In practice no human reviews customer videos or snapshots. Only the customer sees their own arrivals in the app.
+
+Q27. Disclosure: users control and review data
+TEXT: https://ring-visitor-recognizer.onrender.com/privacy.html section Your choices and rights. In-app at https://ring-visitor-recognizer.onrender.com/app: Arrivals (view and delete each snapshot), Enrolled people (view with date and consent method, delete), Privacy and your data (Download my data, Delete all my data, Delete my account) and the Activity log. How-to steps: https://ring-visitor-recognizer.onrender.com/support.html .
+
+Q28. Informing customers about AI capability changes
+TEXT: https://ring-visitor-recognizer.onrender.com/privacy.html section Changes and contact: we post changes and update the effective date, and material changes to how biometric data is used require new in-app consent. New features are described in the Ring Appstore release notes. Accuracy limits are stated in https://ring-visitor-recognizer.onrender.com/terms.html section Recognition limits.
+
+Q29. AI models used
+TEXT: Face detection: OpenCV Haar frontal-face cascade. Face templates: MobileFaceNet (TensorFlow Lite, run with LiteRT on CPU) producing a 128-number template from a 112x112 face crop. Matching: cosine similarity against the same customer enrolled templates, threshold 0.75. All run inside our server. No third-party AI service, no LLM or generative AI, and no external face database.
+
+Q30. Monitoring and maintaining model performance
+TEXT: The model is pinned and never retrained, so it does not drift. Edge cases are handled conservatively: faces under 60 px, side views or poor light are not detected or fall below the 0.75 threshold and show as Unknown, never as a guessed name. Every match shows the score and snapshot so the customer can check it. The same logic applies to all customers. Accuracy has not been benchmarked on a labelled dataset; misidentification reports come via support email.
+
+Q31. Model versions, updates and rollback
+TEXT: The model file is bundled in the code repository and Docker image and versioned in Git with the code, so it changes only with a reviewed release. Each release is a tagged Git commit deployed to Render, and a previous deploy can be redeployed to roll back. Templates from one model version are not compatible with another, so a model change would require customers to re-enroll people, with notice, before it is released.
+
+Q32. Helping users understand AI decisions
+TEXT: Each named arrival shows the snapshot, the matched name and a match score in percent, with the note Matches can be wrong; check the photo. Faces below the threshold are shown as Unknown. The Terms (Recognition limits) explain that lighting, angle, image quality, ageing or look-alikes can cause errors and that results are informational, not identity verification. The in-app disclosure explains how matching works before consent.
+
+Q33. Governance and controls against misuse
+TEXT: Recognition is off by default, needs separate consent and a per-person attestation, and only names people the customer enrolled. Templates are scoped to one account with no cross-account matching, no external face data and no auto-enrollment. Disabled for cameras in IL, TX and WA. Terms forbid stalking, tracking and watchlists, with an abuse address. Matches trigger no automated action. A privacy impact assessment was done, and any new biometric use needs new consent.
+
+Q34. Generates or modifies content
+CHOICE: No.
+
+Q35. Provides analysis or predictions
+CHOICE: Yes.
+
+Q36. Informing users about analytical limitations
+TEXT: Before consent, the in-app disclosure explains what the face match does. On each match the app shows the score and says Matches can be wrong; check the photo. The Terms section Recognition limits says results can be wrong due to lighting, angle, image quality, ageing or look-alikes and must not be used for security or decisions about people. Support explains Unknown, No face seen and Encrypted video results.
+
+Q37. User reporting and feedback mechanisms
+TEXT: Customers and anyone else can email mussadrammeh@protonmail.com for support, wrong matches, privacy requests or to report misuse of the app; we reply within 3 business days. Security issues can be reported to the same address with Security in the subject, acknowledged within 3 business days. Enrolled people may ask us to delete their enrollment. The links are on every page footer.
+
+Q38. Automated decisions with legal effects
+CHOICE: No.
+
+Q39. Law enforcement integration or illegal activity AI
+CHOICE: No.
+
+Q40. Encryption at rest and in transit
+TEXT: In transit: HTTPS/TLS for all browser traffic with HSTS, TLS to Ring APIs and TLS to the database. At rest: every stored record and snapshot is encrypted in the application with AES-256-GCM (random 96-bit IV per record, 128-bit auth tag) before it reaches the database. The 256-bit key is held only in the Render encrypted environment settings, never in code, logs or the database. Passwords use scrypt. Key rotation is a manual re-encryption step.
+
+Q41. Data storage locations and systems
+TEXT: Application: one Node.js container on Render (United States) that keeps no customer data on disk; images are processed in memory. Database: Postgres hosted by Neon on AWS us-east-2 (Ohio, United States), holding only AES-256-GCM ciphertext plus random ids and timestamps. Source code (no customer data) is on GitHub. There are no other data stores, caches or copies.
+
+Q42. Data flow between systems
+TEXT: Ring sends a signed webhook to our Render server, which verifies it and downloads the snapshot through the Ring Partner API. The server masks privacy zones in memory and, only if the customer consented and enrolled people, computes and compares face templates in memory. Results are encrypted and written to the Neon database. The customer browser reads its own data over HTTPS after sign-in. Nothing is sent anywhere else.
+
+Q43. Backup procedures
+TEXT: We make no separate backups or copies of customer data. The database runs on the Neon free plan, whose built-in point-in-time restore keeps change history for up to 6 hours (capped at 1 GB); there are no scheduled snapshots on that plan. That history contains only our AES-256-GCM ciphertext, and deleted data ages out of it within 6 hours. Code is versioned in Git so the service can be redeployed.
+
+Q44. Penetration testing
+TEXT: No third-party or formal penetration test has been performed yet. Instead we rely on internal code review of every change, automated tests on every push (including per-user isolation, webhook signature and account-linking tests), npm audit in CI that fails on high or critical issues, and Dependabot updates. We accept vulnerability reports at mussadrammeh@protonmail.com.
+
+Q45. Security attestations maintained
+TEXT: None. We are a one-person developer and do not hold SOC 2, ISO 27001 or similar attestations. Our database provider Neon states that it is SOC 2 and ISO 27001 certified. Our own controls are documented on https://ring-visitor-recognizer.onrender.com/security.html .
+
+Q46. Vulnerability management process
+TEXT: CI runs type checks, the test suite and npm audit (fails on high or critical) on every push and weekly. Dependabot raises weekly updates for npm packages, the Docker image and GitHub Actions. Every change gets code review before deploy. External reports go to mussadrammeh@protonmail.com; we acknowledge within 3 business days and aim to fix critical issues within 7 days, then redeploy.
+
+Q47. Human access to review Ring videos
+CHOICE: No
+
+Q48. Systems controlling data access
+TEXT: Customer access: our own sign-in with scrypt password hashes, HttpOnly Secure session cookies, CSRF tokens and rate limits, and an ownership check on every request so a customer can only reach their own records. Operator access: Render, Neon and GitHub accounts held only by the developer; an operator status endpoint protected by a token returns counts only. There is no admin tool that shows customer snapshots, names or templates.
+
+Q49. Managing access permissions
+TEXT: There is one person with infrastructure access, the developer, and no other staff, contractors or shared accounts. Each customer record is tied to one customer account id and the code checks ownership on every read and delete; automated tests confirm one user cannot reach another user data. Secrets are kept only in Render environment settings. If staff are ever added, access would be granted per person with least privilege.
+
+Q50. Monitoring and preventing unauthorized access
+TEXT: Sign-in rate limits, CSRF and Origin checks, strict Content-Security-Policy, HMAC-verified Ring webhooks and account linking, and per-request ownership checks prevent unauthorized access. Sign-ins, failed sign-ins and every data change are written to a per-user activity log that the customer can view. Encryption at rest means database access alone does not expose data. The developer reviews logs and dependency alerts.
+
+Q51. Physical security measures
+TEXT: We run no servers or offices that hold customer data. The service runs on Render and the database on Neon (on AWS data centers in the United States), so physical security is provided by those providers. Customer data is never stored on the developer laptop or other devices, and records are encrypted at rest with a key the providers do not hold.
+
+Q52. Maintaining and retaining audit trails
+TEXT: Each customer account has an activity log of sign-ins, failed sign-ins, Ring link and unlink, consent granted or revoked, enrollments, deletions and data exports, shown to the customer in the app and kept 12 months. A separate pseudonymous deletion log (hashed user id, scope, counts, time) is kept 12 months, even after account deletion, as proof deletions were carried out. Logs are encrypted like other records.
+
+Q53. Audit logs maintained
+TEXT: 1) Per-user activity log: sign-ins, failed sign-ins, account creation, Ring linked, unlinked or removed, token refresh failures, consent granted or revoked, face enrolled or deleted, arrival deleted, data exported, all data deleted. 2) Pseudonymous deletion log. 3) Server logs with request paths and job counts only, never tokens, images or personal data. Activity and deletion logs are kept 12 months.
+
+Q54. Employee training on customer data
+TEXT: We have no employees. The only person with access is the developer, who designed the privacy and security controls and follows the written procedures in our privacy impact assessment, deletion procedure and security documentation. There is no formal training program; if staff or contractors are added they would receive privacy and security training before any access.
+
+Q55. Compliance standards followed
+TEXT: We follow the Ring Appstore Program Requirements and Content Policy, including the biometric data requirements. For US law we follow the CCPA and CPRA (access and deletion within 30 days, no sale) and biometric privacy rules such as a public written policy, retention schedule and consent. COPPA: not for children. We hold no formal certifications such as SOC 2 or ISO 27001.
+
+Q56. Privacy rights across jurisdictions
+TEXT: The service is offered only in the United States. All customers get the same rights: in-app access, download and deletion, plus email requests answered within 30 days. Facial recognition is turned off for cameras Ring reports in Illinois, Texas or Washington, whose biometric laws require the enrolled person own written release. Customers must obtain each enrolled person permission. GDPR does not apply as we do not serve the EU.
+
+Q57. Handling law enforcement requests
+TEXT: We have no law enforcement integration and share no data voluntarily. We disclose data only when required by valid legal process such as a subpoena or court order, reviewed by the developer for validity and limited to what it requires. We would notify the affected customer unless the law forbids it. Most stored data is short-lived: snapshots are deleted after 30 days.
+
+Q58. Obtaining and managing consent
+TEXT: Ring permissions are granted in the Ring app. Creating an account needs an unchecked box accepting the Terms and Privacy Policy. Facial recognition is off by default and needs a separate unchecked consent box after a plain-language disclosure; the server stores the time and consent version. Each enrollment needs an attestation that the person agreed and how. The app shows the consent status and date, and consent can be withdrawn at any time.
+
+Q59. Data when consent is withdrawn
+TEXT: Turning off facial recognition immediately and permanently deletes every face template, removes names and scores from past arrivals and clears the consent record; it is logged. Removing the app in Ring deletes the Ring tokens and camera list and stops processing. Deleting data or the account deletes everything right away. Deletions are hard deletes; only the encrypted database history of up to 6 hours remains until it ages out.
+
+Q60. Ring video data retention
+CHOICE: Videos are retained for [x] days.
+DAYS: 30
+
+Q61. Handling DSARs
+TEXT: Customers can download their data at any time in the app (Privacy and your data, Download my data, a JSON file; face templates are excluded for security). Requests to access or correct data can also be emailed to mussadrammeh@protonmail.com; we verify the request comes from the account email address and respond within 30 days, free of charge. Enrolled people can contact us as well.
+
+Q62. Handling deletion requests
+TEXT: Customers delete data themselves in the app: any arrival, any enrolled person, all face templates, all data, or the account. Each step asks for confirmation, takes effect immediately as a hard delete, shows a confirmation and is logged. Email requests to mussadrammeh@protonmail.com are verified and completed within 30 days. Ring app removal and camera removal webhooks delete the related data automatically.
+
+Q63. Easy way to delete account
+TEXT: Yes. In the app, Privacy and your data, Delete my account: type DELETE and the password to confirm, and the account and all its data, including face templates, arrivals, snapshots and Ring tokens, are deleted immediately. Removing Visitor Recognizer in the Ring app also cuts off our access to Ring right away.
+
+Q64. Opt-out mechanisms available
+TEXT: Facial recognition is opt-in and can be turned off at any time, deleting all templates. Customers can delete any enrolled person, choose which cameras are shared in the Ring app, remove the app in Ring, or delete all data or the account. There is nothing else to opt out of: no marketing, analytics, advertising, data sale or AI training uses.
+
+Q65. Privacy team or DPO
+TEXT: No dedicated privacy team or DPO, as we are a one-person developer. The developer, Mussa Drammeh, acts as privacy contact and is responsible for privacy and security decisions, privacy requests and incidents. Contact: mussadrammeh@protonmail.com, listed on the Privacy Policy, Terms, Support and Security pages.
+
+Q66. Privacy impact assessment process
+TEXT: We completed a written privacy impact assessment for facial recognition in November 2026 covering processing, affected people, necessity, risks (misidentification, enrolling without permission, cross-account tracking, breach, function creep, state laws, children) and mitigations. We will review it before any new feature or change in data use and at least once a year.
+
+Q67. Incident and breach response procedure
+TEXT: 1) Contain: take the service offline or block the access path. 2) Rotate the encryption key, Ring client secret, admin token and sessions and revoke affected Ring tokens. 3) Investigate scope using activity logs, server logs and provider logs. 4) Notify affected customers and Ring, and authorities where law requires. 5) Fix the cause, redeploy and document the incident and lessons learned.
+
+Q68. Notification timeline
+TEXT: Our policy is to notify affected customers and Ring without undue delay and in any case within 72 hours of confirming an incident affecting their data, with updates as we learn more. Regulators are notified within the time the applicable law requires.
+
+Q69. Communication channels for affected users
+TEXT: Direct email from mussadrammeh@protonmail.com to the account email address of each affected customer, a notice on our website and Security page, and notice to Ring through our Ring developer contact. Affected users can reply to that email or write to the same address for help, such as deleting their data or account, and we answer within 3 business days.
+
+Q70. Third parties with access to Ring data
+CHOICE: Only service providers processing Ring data on our behalf will have access to Ring data.
