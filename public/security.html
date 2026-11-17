@@ -12,7 +12,7 @@
 <nav aria-label="Account"><a class="button" href="/signin">Sign in</a> <a class="button primary" href="/signup">Create account</a></nav></header>
 
 <h1>Security</h1>
-<section><h2>Architecture</h2><p>Visitor Recognizer is a single Node.js service with a Postgres database, hosted on Render in the United States. It connects to Ring only through Ring's official Partner API (oauth.ring.com and api.amazonvision.com) using each customer's own authorization. Face detection and matching run inside the service; no external face-recognition API is used.</p></section>
+<section><h2>Architecture</h2><p>Visitor Recognizer is a single Node.js service hosted on Render in the United States, with a Postgres database hosted by Neon on AWS us-east-2 (United States), connected over TLS. It connects to Ring only through Ring's official Partner API (oauth.ring.com and api.amazonvision.com) using each customer's own authorization. Face detection and matching run inside the service; no external face-recognition API is used.</p></section>
 <section><h2>Protections</h2><ul>
 <li>TLS for all traffic; HSTS.</li>
 <li>AES-256-GCM application-level encryption of all stored records, Ring tokens, face templates and snapshots, with the key held only in the server environment.</li>
@@ -23,7 +23,7 @@
 <li>Automated dependency auditing and tests on every change; Dependabot updates.</li>
 <li>Operator access is limited to the service owner; there is no staff tool to view customer snapshots or templates.</li></ul></section>
 <section><h2>Reporting a vulnerability</h2><p>Email <a href="mailto:mussadrammeh@protonmail.com">mussadrammeh@protonmail.com</a> with “Security” in the subject. We acknowledge within 3 business days and aim to fix critical issues within 7 days. Please don't access other people's data while testing.</p></section>
-<section><h2>Incident response</h2><p>If we learn of unauthorized access to customer data we will contain it, rotate affected keys and tokens, notify affected customers and Ring without undue delay, and notify authorities where the law requires.</p></section>
+<section><h2>Incident response</h2><p>If we learn of unauthorized access to customer data we will contain it, rotate affected keys and tokens, notify affected customers and Ring without undue delay and within 72 hours of confirming it, and notify authorities where the law requires.</p></section>
 
 <footer class="foot"><a href="/">Home</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/support.html">Support</a> · <a href="/security.html">Security</a><br>Visitor Recognizer is an independent app by Aoi Corp. It is not made, sponsored or endorsed by Ring LLC or Amazon. Ring is a trademark of Ring LLC.</footer>
 </main>

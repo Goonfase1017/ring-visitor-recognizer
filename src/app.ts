@@ -27,7 +27,7 @@ import { LINK_EXPIRED_MESSAGE, authPage, linkPage, linkSuccessPage, messagePage 
 import { WebhookHandler } from "./webhooks";
 
 export const RECOGNITION_CONSENT_TEXT =
-  "I want to turn on facial recognition. I understand that Visitor Recognizer will create a face template (a set of numbers describing facial geometry) for each person I enroll, store it encrypted on the Visitor Recognizer server (Render, United States), and compare faces in my Ring camera snapshots only against the people I enrolled. People I have not enrolled are shown as \"Unknown\" and no template is kept for them. I can turn this off at any time, which permanently deletes all face templates.";
+  "I want to turn on facial recognition. I understand that Visitor Recognizer will create a face template (a set of numbers describing facial geometry) for each person I enroll, store it encrypted in the Visitor Recognizer database (Neon on AWS, United States), and compare faces in my Ring camera snapshots only against the people I enrolled. People I have not enrolled are shown as \"Unknown\" and no template is kept for them. I can turn this off at any time, which permanently deletes all face templates.";
 
 export const ENROLLMENT_ATTESTATION =
   "I confirm this person has given me permission to enroll their face so this app can recognize them at my door, and that I will delete their enrollment if they ask.";
