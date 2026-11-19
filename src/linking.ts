@@ -10,7 +10,21 @@ export type ClaimResult =
   | { status: "already_linked"; accountId: string }
   | { status: "expired" }
   | { status: "no_match" }
+  | { status: "other_ring_account_linked" }
+  | { status: "completion_failed"; httpStatus: number }
   | { status: "ring_error"; httpStatus: number };
+
+export type LinkPageState =
+  | { status: "already_linked"; accountId: string }
+  | { status: "other_ring_account_linked" }
+  | { status: "ready" };
+
+/** Inline retry schedule for the final PATCH status=completed (exported so tests can shorten it). */
+export const completionRetry = {
+  delaysMs: [500, 1500],
+  sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
+  random: Math.random,
+};
 
 /**
  * One-way account linking (Ring Partner API "Token Exchange Flow" + "Nonce Validation" steps 1-7).
@@ -61,38 +75,98 @@ export class Linking {
     return n;
   }
 
-  /**
-   * Runs ONLY after the partner user is signed in. Matches the nonce against every unclaimed token
-   * (constant-time), claims it for this user, then POST + PATCH app-integrations.
-   */
-  async claim(userId: string, userEmail: string, nonce: string, time: string): Promise<ClaimResult> {
-    if (!checkLinkTime(time).ok) return { status: "expired" };
-    const key = CONFIG.RING_HMAC_SIGNATURE_KEY;
-    if (!key) return { status: "ring_error", httpStatus: 500 };
-
+  /** Finds an unclaimed token whose Ring account ID matches the nonce (constant work over all of them). */
+  private async matchPending(nonce: string, time: string, key: string) {
     const ttlCutoff = Date.now() - CONFIG.UNCLAIMED_TOKEN_TTL_MINUTES * 60_000;
     let match = null as Awaited<ReturnType<Repo["pendingTokens"]>>[number] | null;
     for (const p of await this.repo.pendingTokens()) {
       if (p.data.receivedAt < ttlCutoff) continue;
       if (nonceMatches(nonce, time, p.data.accountId, key)) match = p; // keep iterating: constant work
     }
+    return match;
+  }
+
+  /**
+   * Read-only check for the Account Link page when the customer is already signed in, so a revisit
+   * after a completed link shows "Already linked" first (UX-07) and a second Ring account is refused
+   * up front (one Ring account per Visitor Recognizer account). Claims nothing.
+   */
+  async linkPageState(userId: string, nonce: string, time: string): Promise<LinkPageState> {
+    const key = CONFIG.RING_HMAC_SIGNATURE_KEY;
+    if (!key || !checkLinkTime(time).ok) return { status: "ready" };
+    const match = await this.matchPending(nonce, time, key);
+    const links = await this.repo.linksForUser(userId);
+    if (!match) {
+      for (const l of links) {
+        if (nonceMatches(nonce, time, l.data.accountId, key)) return { status: "already_linked", accountId: l.data.accountId };
+      }
+      return { status: "ready" };
+    }
+    if (links.some((l) => l.data.accountId !== match.data.accountId)) return { status: "other_ring_account_linked" };
+    return { status: "ready" };
+  }
+
+  /**
+   * Runs ONLY after the partner user is signed in. Matches the nonce against every unclaimed token
+   * (constant-time), then POST + PATCH app-integrations, and claims the token for this user only
+   * once Ring has accepted both. Each Visitor Recognizer account holds at most ONE Ring account.
+   */
+  async claim(userId: string, userEmail: string, nonce: string, time: string): Promise<ClaimResult> {
+    if (!checkLinkTime(time).ok) return { status: "expired" };
+    const key = CONFIG.RING_HMAC_SIGNATURE_KEY;
+    if (!key) return { status: "ring_error", httpStatus: 500 };
+
+    const match = await this.matchPending(nonce, time, key);
+    const existing = await this.repo.linksForUser(userId);
 
     if (!match) {
       // Revisit after a completed link: the nonce belongs to a Ring account this user already holds.
-      for (const l of await this.repo.linksForUser(userId)) {
+      for (const l of existing) {
         if (nonceMatches(nonce, time, l.data.accountId, key)) return { status: "already_linked", accountId: l.data.accountId };
       }
       return { status: "no_match" };
     }
 
     const t = match.data;
+    // One Ring account per Visitor Recognizer account: enrollments and matching never span Ring accounts.
+    if (existing.some((l) => l.data.accountId !== t.accountId)) {
+      await this.repo.audit(userId, "ring_link_refused_second_account", {});
+      return { status: "other_ring_account_linked" };
+    }
+
     const identifier = maskEmail(userEmail);
-    try {
-      await confirmIntegration(t.accessToken, t.accountId, nonce, identifier); // -> "awaiting"
-    } catch (err) {
-      const status = err instanceof RingApiError ? err.status : 502;
-      await this.repo.audit(userId, "ring_link_failed", { step: "confirm", httpStatus: status });
-      return { status: "ring_error", httpStatus: status };
+    if (t.confirmedBy !== userId) {
+      try {
+        await confirmIntegration(t.accessToken, t.accountId, nonce, identifier); // -> "awaiting"
+      } catch (err) {
+        const status = err instanceof RingApiError ? err.status : 502;
+        await this.repo.audit(userId, "ring_link_failed", { step: "confirm", httpStatus: status });
+        return { status: "ring_error", httpStatus: status };
+      }
+      // Remember that the POST succeeded so a retry from the error page only repeats the PATCH.
+      await this.repo.markPendingConfirmed(t.accountId, userId);
+    }
+
+    // Final step: PATCH status=completed. Retried inline with short backoff; if Ring still doesn't
+    // accept it the link is NOT complete: the token stays unclaimed and the customer gets a retry page.
+    let integrationStatus = "";
+    let lastStatus = 502;
+    for (let attempt = 0; attempt <= completionRetry.delaysMs.length; attempt++) {
+      if (attempt > 0) {
+        const d = completionRetry.delaysMs[attempt - 1];
+        await completionRetry.sleep(d / 2 + completionRetry.random() * d);
+      }
+      try {
+        integrationStatus = await setIntegrationStatus(t.accessToken, t.accountId, "completed");
+        break;
+      } catch (err) {
+        lastStatus = err instanceof RingApiError ? err.status : 502;
+        console.warn(`PATCH app-integrations failed (attempt ${attempt + 1}):`, (err as Error).message);
+      }
+    }
+    if (integrationStatus !== "completed") {
+      await this.repo.audit(userId, "ring_link_failed", { step: "complete", httpStatus: lastStatus });
+      return { status: "completion_failed", httpStatus: lastStatus };
     }
 
     const link: RingLink = {
@@ -105,7 +179,7 @@ export class Linking {
       linkedAt: new Date().toISOString(),
       refreshedAt: Date.now(),
       status: "active",
-      integrationStatus: "awaiting",
+      integrationStatus: "completed",
     };
     const previous = await this.repo.saveLink(userId, link);
     await this.repo.deletePending(t.accountId);
@@ -113,14 +187,6 @@ export class Linking {
       // The newest pair goes to whoever signed in now; the earlier partner account loses this Ring account.
       await this.repo.deleteDevicesForAccount(previous.userId, t.accountId);
       await this.repo.audit(previous.userId, "ring_account_moved_to_other_user", {});
-    }
-
-    let integrationStatus = "awaiting";
-    try {
-      integrationStatus = await setIntegrationStatus(t.accessToken, t.accountId, "completed");
-      await this.repo.saveLink(userId, { ...link, integrationStatus: "completed" });
-    } catch (err) {
-      console.warn("PATCH app-integrations failed; will retry in background:", (err as Error).message);
     }
     await this.repo.audit(userId, "ring_account_linked", { integrationStatus });
 

@@ -19,21 +19,50 @@ export interface RingWebhook {
 }
 
 /**
- * Handles verified Ring webhook v1.1 payloads after the 200 has been sent. Deduplicates on
- * meta.request_id (Ring retries and may deliver twice).
+ * Handles verified Ring webhook v1.1 payloads after the 200 has been sent. Idempotent on
+ * meta.request_id (Ring retries and may deliver twice): the ID is recorded as processed only AFTER
+ * processing succeeds. If processing fails partway it is retried here with backoff, and because the
+ * ID was never recorded a redelivery from Ring is processed again rather than skipped.
  */
 export class WebhookHandler {
   private recent = new Set<string>();
+  private inFlight = new Set<string>();
+  /** Backoff before each in-process retry of a failed event (exported field so tests can shorten it). */
+  retryDelaysMs = [1000, 5000];
   constructor(private repo: Repo, private linking: Linking, private processor: EventProcessor) {}
 
   async handle(payload: RingWebhook): Promise<void> {
     const requestId = payload.meta?.request_id ?? payload.data?.id;
     if (requestId) {
-      if (this.recent.has(requestId) || (await this.repo.store.get("webhookSeen", requestId))) return;
-      this.recent.add(requestId);
-      if (this.recent.size > 5000) this.recent.clear();
-      await this.repo.store.put("webhookSeen", requestId, { userId: null, createdAt: Date.now() }, {});
+      if (this.recent.has(requestId) || this.inFlight.has(requestId)) return;
+      if (await this.repo.store.get("webhookSeen", requestId)) return;
+      this.inFlight.add(requestId); // concurrent duplicate deliveries are skipped while this one runs
     }
+    try {
+      let lastErr: unknown;
+      for (let attempt = 0; attempt <= this.retryDelaysMs.length; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, this.retryDelaysMs[attempt - 1]));
+        try {
+          await this.process(payload);
+          lastErr = undefined;
+          break;
+        } catch (err) {
+          lastErr = err;
+          console.warn(`Webhook processing failed (attempt ${attempt + 1}):`, (err as Error).message);
+        }
+      }
+      if (lastErr) throw lastErr; // not recorded as seen: a redelivery will be processed again
+      if (requestId) {
+        await this.repo.store.put("webhookSeen", requestId, { userId: null, createdAt: Date.now() }, {});
+        this.recent.add(requestId);
+        if (this.recent.size > 5000) this.recent.clear();
+      }
+    } finally {
+      if (requestId) this.inFlight.delete(requestId);
+    }
+  }
+
+  private async process(payload: RingWebhook): Promise<void> {
     const type = payload.data?.type ?? "";
     const accountId = payload.meta?.account_id ?? "";
     const attrs = payload.data?.attributes ?? {};
@@ -58,7 +87,7 @@ export class WebhookHandler {
 
       case "device_added":
         // May arrive before the link is claimed; claim() runs discovery itself in that case.
-        if (userId) await this.linking.syncDevices(userId, accountId).catch((e) => console.warn("device sync failed:", e.message));
+        if (userId) await this.linking.syncDevices(userId, accountId); // a failure is retried (not marked processed)
         return;
 
       case "device_removed": {

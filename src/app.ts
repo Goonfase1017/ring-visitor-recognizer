@@ -23,7 +23,7 @@ import { verifyWebhookSignature } from "./ring/signature";
 import { TokenManager } from "./ring/tokens";
 import { encryptionEnabled, hashPassword, maskEmail, randomToken, safeEqual, sha256Hex, verifyPassword } from "./secure";
 import { Store, StoredDoc } from "./storage";
-import { LINK_EXPIRED_MESSAGE, authPage, linkPage, linkSuccessPage, messagePage } from "./views";
+import { LINK_EXPIRED_MESSAGE, authPage, linkPage, linkRetryPage, linkSuccessPage, messagePage, otherRingAccountPage } from "./views";
 import { WebhookHandler } from "./webhooks";
 
 export const RECOGNITION_CONSENT_TEXT =
@@ -61,7 +61,8 @@ export function createApp({ store, faces }: AppDeps) {
   // ---------------------------------------------------------------------------------------------
   // Health: fast, no I/O.
   // ---------------------------------------------------------------------------------------------
-  app.get("/health", (_req, res) => res.json({ status: "ok" }));
+  const BUILD_COMMIT = (process.env.RENDER_GIT_COMMIT ?? "").slice(0, 7) || undefined; // set by Render at deploy time
+  app.get("/health", (_req, res) => res.json({ status: "ok", commit: BUILD_COMMIT }));
 
   // ---------------------------------------------------------------------------------------------
   // Ring webhook (raw body for HMAC). Verify, acknowledge immediately, process asynchronously.
@@ -210,11 +211,26 @@ export function createApp({ store, faces }: AppDeps) {
           : messagePage("Link not valid", "This page needs to be opened from the Ring app. Open the Ring app, go to Ring Appstore, choose Visitor Recognizer and select Get / Connect.")
       );
 
-  app.get("/ring/link", (req: Authed, res) => {
-    res.setHeader("Cache-Control", "no-store");
-    const p = linkParams(req.query);
-    if (typeof p === "string") return linkProblem(res, p);
-    res.send(linkPage({ ...p, csrf: formCsrf(req, res), signedInEmail: req.user?.data.email }));
+  app.get("/ring/link", async (req: Authed, res, next) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const p = linkParams(req.query);
+      if (typeof p === "string") return linkProblem(res, p);
+      if (req.user) {
+        // Revisit after linking: show "Already linked" first instead of asking to connect again.
+        const state = await linking.linkPageState(req.user.id, p.nonce, p.time);
+        if (state.status === "already_linked") {
+          const devices = (await repo.devicesForUser(req.user.id)).map((d) => d.data).filter((d) => d.accountId === state.accountId);
+          return res.send(linkSuccessPage(devices, true));
+        }
+        if (state.status === "other_ring_account_linked") {
+          return res.status(409).send(otherRingAccountPage(req.user.data.email, formCsrf(req, res), p));
+        }
+      }
+      res.send(linkPage({ ...p, csrf: formCsrf(req, res), signedInEmail: req.user?.data.email }));
+    } catch (err) {
+      next(err);
+    }
   });
 
   async function finishLink(req: Request, res: Response, user: StoredDoc<User>, nonce: string, time: string) {
@@ -227,6 +243,11 @@ export function createApp({ store, faces }: AppDeps) {
         return res.send(linkSuccessPage((await devices()).filter((d) => d.accountId === result.accountId), true));
       case "expired":
         return res.status(400).send(messagePage("Link expired", LINK_EXPIRED_MESSAGE, { href: "/app", label: "Go to dashboard" }));
+      case "other_ring_account_linked":
+        return res.status(409).send(otherRingAccountPage(user.data.email, formCsrf(req, res), { nonce, time }));
+      case "completion_failed":
+        // Ring accepted the request but not the final "completed" step: the link is NOT finished.
+        return res.status(502).send(linkRetryPage({ nonce, time, csrf: formCsrf(req, res) }));
       case "no_match":
         return res
           .status(409)

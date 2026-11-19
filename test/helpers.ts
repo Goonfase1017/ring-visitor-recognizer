@@ -46,6 +46,10 @@ export class MockRing {
   requests: { method: string; path: string; headers: http.IncomingHttpHeaders; body: string }[] = [];
   accounts: RingAccount[] = [];
   server!: http.Server;
+  /** Number of upcoming PATCH app-integrations calls to fail with 503. */
+  failPatch = 0;
+  /** Upcoming 429 responses per path, with an optional Retry-After header value. */
+  rateLimits: { path: string; count: number; retryAfter?: string }[] = [];
 
   byToken(auth?: string) {
     const t = (auth ?? "").replace(/^Bearer /, "");
@@ -60,6 +64,12 @@ export class MockRing {
         const url = new URL(req.url ?? "/", "http://x");
         this.requests.push({ method: req.method ?? "", path: url.pathname, headers: req.headers, body });
         const json = (status: number, v: unknown) => { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(v)); };
+        const rl = this.rateLimits.find((r) => r.path === url.pathname && r.count > 0);
+        if (rl) {
+          rl.count--;
+          res.writeHead(429, { "Content-Type": "application/json", ...(rl.retryAfter !== undefined ? { "Retry-After": rl.retryAfter } : {}) });
+          return res.end(JSON.stringify({ errors: [{ status: "429", code: "TOO_MANY_REQUESTS" }] }));
+        }
         if (url.pathname === "/oauth/token") {
           const f = new URLSearchParams(body);
           if (f.get("client_id") !== "test-client" || f.get("client_secret") !== "test-secret") return json(401, { error: "invalid_client" });
@@ -90,6 +100,10 @@ export class MockRing {
           return json(200, { data: { type: "app-integrations", id: "ava1.ring.client.x", attributes: { status: "awaiting" } }, meta: {} });
         }
         if (url.pathname === "/v1/accounts/me/app-integrations" && req.method === "PATCH") {
+          if (this.failPatch > 0) {
+            this.failPatch--;
+            return json(503, { errors: [{ status: "503", code: "SERVICE_UNAVAILABLE" }] });
+          }
           return json(200, { data: { type: "app-integrations", id: "ava1.ring.client.x", attributes: { status: JSON.parse(body).status } }, meta: {} });
         }
         if (url.pathname === "/v1/devices") {

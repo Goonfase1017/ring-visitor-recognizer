@@ -4,7 +4,7 @@
   "category": "Home & Security",
   "shortDescription": "See every doorbell press and motion with a snapshot. Optionally name people you enroll yourself. Off by default.",
   "description": "Visitor Recognizer keeps an arrival log for your Ring doorbell and cameras: each doorbell press or motion event, with a snapshot. If you choose, turn on facial recognition and enroll the people you want named, such as family. Anyone else shows as Unknown and nothing is kept about them. It's a hosted web app; processing runs on our server (Render, US) and data is encrypted. Arrivals delete after 30 days. Delete anything any time.",
-  "privacy": "Snapshots, arrivals and (only if you turn on facial recognition) face templates of people you enroll are processed and stored on the Visitor Recognizer server hosted by Render in the US, encrypted with AES-256-GCM. Arrivals delete after 30 days. Never sold, never used for ads, never shared across customers. Delete people, arrivals, all data or your account in the app.",
+  "privacy": "Snapshots, arrivals and (only if you turn on facial recognition) face templates of people you enroll are processed on the Visitor Recognizer server (Render, US) and stored encrypted (AES-256-GCM) in the Neon database in the US. Each account connects one Ring account. Arrivals delete after 30 days. Never sold, never used for ads, never shared across customers. Delete people, arrivals, all data or your account in the app.",
   "features": [
     "Arrival log with snapshots for doorbell presses and motion",
     "Optional facial recognition, off by default, separate consent",

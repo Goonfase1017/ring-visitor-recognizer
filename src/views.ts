@@ -104,6 +104,31 @@ export function linkSuccessPage(devices: Device[], already = false) {
   );
 }
 
+/** Shown when Ring did not accept the final "completed" step: nothing is linked yet; one tap retries. */
+export function linkRetryPage(opts: { nonce: string; time: string; csrf: string }) {
+  const fields = { nonce: opts.nonce, time: opts.time, _csrf: opts.csrf };
+  return layout(
+    "Connection not finished",
+    `<div class="card error" role="alert"><h1>We couldn't finish connecting to Ring</h1>
+<p>You're signed in, but Ring didn't confirm the last step, so your Ring account is <strong>not connected yet</strong>. This is usually temporary.</p>
+<form method="post" action="/ring/link/confirm">${hidden(fields)}<button type="submit" class="primary">Try again</button></form>
+<p class="muted small">If it still doesn't work, wait a few minutes and start again from the Ring app: Ring Appstore → My Apps → ${e(APP_NAME)}. Connection links are valid for 10 minutes. Need help? Email <a href="mailto:${e(CONFIG.SUPPORT_EMAIL)}">${e(CONFIG.SUPPORT_EMAIL)}</a>.</p></div>`
+  );
+}
+
+/** One Ring account per Visitor Recognizer account: a second, different Ring account is refused. */
+export function otherRingAccountPage(signedInEmail: string, csrf: string, link: { nonce: string; time: string }) {
+  return layout(
+    "Already connected to another Ring account",
+    `<div class="card error" role="alert"><h1>This account is already connected to a different Ring account</h1>
+<p>${e(APP_NAME)} account <strong>${e(signedInEmail)}</strong> is already connected to another Ring account. Each ${e(APP_NAME)} account can be connected to only one Ring account, so your enrolled people and arrivals always stay with that one Ring account.</p>
+<p>To connect this Ring account instead, first disconnect the current one: open your dashboard, go to <strong>Ring connection</strong> and select <strong>Stop using this Ring account here</strong> (or remove ${e(APP_NAME)} from that Ring account in the Ring app). Then start the connection again from the Ring app. You can also use a different ${e(APP_NAME)} account for this Ring account.</p>
+<a class="button primary" href="/app">Go to dashboard</a>
+<form method="post" action="/signout" class="inline">${hidden({ _csrf: csrf, next: `/ring/link?nonce=${link.nonce}&time=${link.time}` })}
+<button type="submit" class="link">Use a different account</button></form></div>`
+  );
+}
+
 export function messagePage(title: string, message: string, action?: { href: string; label: string }, status: "error" | "info" = "error") {
   return layout(
     title,

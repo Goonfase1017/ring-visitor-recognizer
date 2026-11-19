@@ -42,9 +42,53 @@ function headers(accountId: string | undefined, extra: Record<string, string> = 
   };
 }
 
-async function call(url: string, init: RequestInit & { timeoutMs?: number }): Promise<Response> {
-  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(init.timeoutMs ?? CONFIG.RING_HTTP_TIMEOUT_MS) });
-  return res;
+/**
+ * HTTP 429 handling for every Ring request: honor Retry-After (seconds or HTTP date) when Ring
+ * sends it, otherwise back off exponentially from 1 s (1 s, 2 s, 4 s ...) with full jitter.
+ * Exported so tests can shorten the delays.
+ */
+export const rateLimitPolicy = {
+  maxRetries: 4,
+  baseDelayMs: 1000,
+  maxDelayMs: 30_000,
+  sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
+  random: Math.random,
+};
+
+/** Parses Retry-After as delta-seconds or an HTTP date; null when absent or unreadable. */
+export function parseRetryAfter(value: string | null, now = Date.now()): number | null {
+  if (!value) return null;
+  const v = value.trim();
+  if (/^\d+(\.\d+)?$/.test(v)) return Math.round(Number(v) * 1000);
+  const at = Date.parse(v);
+  return Number.isFinite(at) ? Math.max(0, at - now) : null;
+}
+
+/** Delay before retry number `attempt` (0-based) after a 429. */
+export function rateLimitDelayMs(attempt: number, retryAfter: string | null): number {
+  const p = rateLimitPolicy;
+  const backoff = Math.min(p.maxDelayMs, p.baseDelayMs * 2 ** attempt);
+  const jittered = backoff / 2 + p.random() * (backoff / 2); // jitter in [backoff/2, backoff]
+  const hinted = parseRetryAfter(retryAfter);
+  // Never retry sooner than Ring asked; the exponential schedule is the floor when Ring gives no hint.
+  return Math.min(p.maxDelayMs, hinted !== null ? Math.max(hinted, jittered) : jittered);
+}
+
+async function call(url: string, init: RequestInit & { timeoutMs?: number; maxRateLimitRetries?: number }): Promise<Response> {
+  const { timeoutMs, maxRateLimitRetries, ...rest } = init;
+  const retries = maxRateLimitRetries ?? rateLimitPolicy.maxRetries;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs ?? CONFIG.RING_HTTP_TIMEOUT_MS) });
+    if (res.status !== 429 || attempt >= retries) return res;
+    const hint = res.headers.get("retry-after");
+    const hinted = parseRetryAfter(hint);
+    // Ring asked us to wait longer than we are willing to block: give the 429 back to the caller.
+    if (hinted !== null && hinted > rateLimitPolicy.maxDelayMs) return res;
+    await res.arrayBuffer().catch(() => undefined); // release the connection
+    const delay = rateLimitDelayMs(attempt, hint);
+    console.warn(`Ring API rate limited (429); retrying in ${delay} ms`);
+    await rateLimitPolicy.sleep(delay);
+  }
 }
 
 async function expectOk(res: Response, what: string) {
@@ -102,6 +146,7 @@ export async function confirmIntegration(accessToken: string, accountId: string,
     method: "POST",
     headers: headers(accountId, { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }),
     body: JSON.stringify({ account_identifier: accountIdentifier, nonce }),
+    maxRateLimitRetries: 2, // the customer is waiting on the link page
   });
   await expectOk(res, "POST /v1/accounts/me/app-integrations");
   const json = (await res.json().catch(() => ({}))) as any;
@@ -113,6 +158,7 @@ export async function setIntegrationStatus(accessToken: string, accountId: strin
     method: "PATCH",
     headers: headers(accountId, { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }),
     body: JSON.stringify(accountIdentifier ? { account_identifier: accountIdentifier, status } : { status }),
+    maxRateLimitRetries: 2, // the customer is waiting on the link page
   });
   await expectOk(res, "PATCH /v1/accounts/me/app-integrations");
   const json = (await res.json().catch(() => ({}))) as any;

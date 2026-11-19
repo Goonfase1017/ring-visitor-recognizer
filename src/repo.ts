@@ -34,6 +34,8 @@ export interface RingTokens {
 }
 export interface PendingToken extends RingTokens {
   receivedAt: number;
+  /** Partner user for whom Ring already accepted the POST app-integrations (only the PATCH is left). */
+  confirmedBy?: string;
 }
 export interface RingLink extends RingTokens {
   linkedAt: string;
@@ -138,6 +140,11 @@ export class Repo {
   async savePending(t: RingTokens) {
     const data: PendingToken = { ...t, receivedAt: Date.now() };
     await this.store.put("pendingTokens", t.accountId, { userId: null, createdAt: Date.now() }, data);
+  }
+  async markPendingConfirmed(accountId: string, userId: string) {
+    const p = await this.store.get<PendingToken>("pendingTokens", accountId);
+    if (!p) return;
+    await this.store.put("pendingTokens", accountId, { userId: null, createdAt: p.createdAt }, { ...p.data, confirmedBy: userId });
   }
   pendingTokens = () => this.store.find<PendingToken>("pendingTokens", { userId: null });
   deletePending = (accountId: string) => this.store.delete("pendingTokens", accountId);

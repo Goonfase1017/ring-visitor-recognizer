@@ -81,8 +81,13 @@ export class EventProcessor {
 
     const user = await this.repo.userById(userId);
     if (!user) return;
-    const visitors = user.data.recognitionConsent ? await this.repo.visitors(userId) : [];
-    const recognitionOn = Boolean(user.data.recognitionConsent) && visitors.length > 0 && recognitionAllowedForState(device.data.state);
+    // Enrollments belong to the customer's single connected Ring account. As a safeguard, recognition
+    // only runs when this event's Ring account is the customer's one and only link, so the same
+    // enrolled faces are never matched across different Ring accounts.
+    const links = await this.repo.linksForUser(userId);
+    const singleRingAccount = links.length === 1 && links[0].id === job.accountId;
+    const visitors = user.data.recognitionConsent && singleRingAccount ? await this.repo.visitors(userId) : [];
+    const recognitionOn = Boolean(user.data.recognitionConsent) && singleRingAccount && visitors.length > 0 && recognitionAllowedForState(device.data.state);
 
     const base: ArrivalEvent = {
       accountId: job.accountId,
