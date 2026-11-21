@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS builder
+FROM node:26-bookworm-slim AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -6,7 +6,7 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-bookworm-slim
+FROM node:26-bookworm-slim
 WORKDIR /app
 # Python runtime for the server-side image step (OpenCV face detector + bundled MobileFaceNet model).
 # Versions are pinned: OpenCV 5 removed the Haar face detector this app uses.
